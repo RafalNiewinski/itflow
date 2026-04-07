@@ -617,7 +617,7 @@ foreach ($messages as $message) {
     $from_domain = sanitizeInput(end($from_domain));
 
     // Subject
-    $subject = sanitizeInput((string)$message->getSubject() ?: 'No Subject');
+    $subject = sanitizeInput(mb_decode_mimeheader((string)$message->getSubject()) ?: 'No Subject');
 
     // CC
     $ccs = array();
@@ -878,7 +878,7 @@ foreach ($messages as $message) {
             // optional: logApp("Cron-Email-Parser", "info", "Moved message to ITFlow");
         } catch (\Throwable $e) {
             // >>> Put the extra logging RIGHT HERE
-            $subj = (string)$message->getSubject();
+            $subj = mb_decode_mimeheader((string)$message->getSubject());
             $uid  = method_exists($message, 'getUid') ? $message->getUid() : 'n/a';
             $path = (is_object($targetFolder) && property_exists($targetFolder, 'path')) ? (string)$targetFolder->path : $targetFolderPath;
             logApp(
