@@ -1459,6 +1459,16 @@ if (isset($_POST['bulk_ticket_reply'])) {
 
                 customAction('ticket_resolve', $ticket_id);
             }
+            
+            // Reopen if status changed from "Resolved"
+            if ($current_ticket_status == 4 && $ticket_status != 4 && $ticket_status != 5) {
+                mysqli_query($mysqli, "UPDATE tickets SET ticket_resolved_at = NULL WHERE ticket_id = $ticket_id");
+
+                // Logging
+                logAction("Ticket", "Reopened", "$session_name reopened ticket ID $ticket_id", $client_id, $ticket_id);
+
+                customAction('ticket_update', $ticket_id);
+            }
 
             // Get Contact Details
             $sql = mysqli_query(
