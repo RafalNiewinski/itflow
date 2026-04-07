@@ -202,6 +202,7 @@ ob_start();
                         <select class="form-control select2" name="frequency" required>
                             <option value="">- Select Frequency -</option>
                             <optgroup label="Days">
+                                <option>Daily</option>
                                 <option>Three Days</option>
                                 <option>Weekly</option>
                                 <option>Biweekly</option>

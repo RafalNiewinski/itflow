@@ -415,7 +415,10 @@ if (mysqli_num_rows($sql_recurring_tickets) > 0) {
         addToMailQueue($data);
 
         // Set the next run date
-        if ($frequency == "three days") {
+        if ($frequency == "daily") {
+            $now = new DateTime();
+            $next_run = date_add($now, date_interval_create_from_date_string('1 day'));
+        } else if ($frequency == "three days") {
             $now = new DateTime();
             $next_run = date_add($now, date_interval_create_from_date_string('3 days'));
         } elseif ($frequency == "weekly") {
