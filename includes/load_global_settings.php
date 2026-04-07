@@ -217,6 +217,9 @@ $asset_types_array = array (
     'Display'=>'fa-tv',
     'Camera'=>'fa-video',
     'Virtual Machine'=>'fa-cloud',
+    'Uninterruptible Power Supply (UPS)' => 'fa-battery-three-quarters',
+    'Power Distribution Unit (PDU)' => 'fa-plug',
+    'Patch Panel' => 'fa-ethernet',
     'Other'=>'fa-tag'
 );
 

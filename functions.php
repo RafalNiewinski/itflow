@@ -731,6 +731,12 @@ function getAssetIcon($asset_type)
         $device_icon = "tv";
     } elseif ($asset_type == 'Virtual Machine') {
         $device_icon = "cloud";
+    } elseif ($asset_type == 'Uninterruptible Power Supply (UPS)') {
+        $device_icon = "battery-three-quarters";
+    } elseif ($asset_type == 'Power Distribution Unit (PDU)') {
+        $device_icon = "plug";
+    } elseif ($asset_type == 'Patch Panel') {
+        $device_icon = "ethernet";
     } else {
         $device_icon = "tag";
     }
