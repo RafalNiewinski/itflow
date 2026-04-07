@@ -1411,6 +1411,7 @@ if (isset($_POST['bulk_ticket_reply'])) {
             $ticket_prefix = sanitizeInput($row['ticket_prefix']);
             $ticket_number = intval($row['ticket_number']);
             $ticket_subject = sanitizeInput($row['ticket_subject']);
+            $current_ticket_status = intval($row['ticket_status']);
             $current_ticket_priority = sanitizeInput($row['ticket_priority']);
             $url_key = sanitizeInput($row['ticket_url_key']);
             $ticket_first_response_at = sanitizeInput($row['ticket_first_response_at']);
@@ -1487,6 +1488,8 @@ if (isset($_POST['bulk_ticket_reply'])) {
 
             // Send e-mail to client if public update & email is set up
             if ($private_note == 0 && (!empty($config_smtp_host) || !empty($config_smtp_provider))) {
+                // Get ticket status name for the purpose of email notification
+                $ticket_status_name = sanitizeInput(mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT ticket_status_name FROM ticket_statuses WHERE ticket_status_id = $ticket_status"))['ticket_status_name']);
 
                 $subject = "Ticket update - [$ticket_prefix$ticket_number] - $ticket_subject";
                 $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>Your ticket regarding $ticket_subject has been updated.<br><br>--------------------------------<br>$ticket_reply<br>--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status_name<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br><br>--<br>$company_name - Support<br>$from_email<br>$company_phone";
