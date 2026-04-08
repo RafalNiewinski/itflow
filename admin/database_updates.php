@@ -4334,6 +4334,13 @@ if (LATEST_DATABASE_VERSION > CURRENT_DATABASE_VERSION || LATEST_DATABASE_PATCH 
         mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '2.4.2'");
 
     }
+
+    if (CURRENT_DATABASE_PATCH == '0') {
+        mysqli_query($mysqli, "ALTER TABLE `companies` ADD `company_abbreviation` VARCHAR(10) DEFAULT NULL AFTER `company_name`");
+        mysqli_query($mysqli, "ALTER TABLE `companies` ADD `company_legal_name` VARCHAR(200) DEFAULT NULL AFTER `company_abbreviation`");
+
+        mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_patch` = '1'");
+    }
     //
     // // if (CURRENT_DATABASE_VERSION == '2.4.2') {
     //     // Insert queries here required to update to DB version 2.4.3

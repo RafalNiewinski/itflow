@@ -7,6 +7,8 @@ if (isset($_POST['edit_company'])) {
     validateCSRFToken($_POST['csrf_token']);
 
     $name = sanitizeInput($_POST['name']);
+    $abbreviation = sanitizeInput($_POST['abbreviation']);
+    $legal_name = sanitizeInput($_POST['legal_name']);
     $address = sanitizeInput($_POST['address']);
     $city = sanitizeInput($_POST['city']);
     $state = sanitizeInput($_POST['state']);
@@ -42,7 +44,7 @@ if (isset($_POST['edit_company'])) {
         }
     }
 
-    mysqli_query($mysqli,"UPDATE companies SET company_name = '$name', company_address = '$address', company_city = '$city', company_state = '$state', company_zip = '$zip', company_country = '$country', company_phone_country_code = '$phone_country_code', company_phone = '$phone', company_email = '$email', company_website = '$website', company_tax_id = '$tax_id' WHERE company_id = 1");
+    mysqli_query($mysqli,"UPDATE companies SET company_name = '$name', company_abbreviation = '$abbreviation', company_legal_name = '$legal_name', company_address = '$address', company_city = '$city', company_state = '$state', company_zip = '$zip', company_country = '$country', company_phone_country_code = '$phone_country_code', company_phone = '$phone', company_email = '$email', company_website = '$website', company_tax_id = '$tax_id' WHERE company_id = 1");
 
     logAction("Settings", "Edit", "$session_name edited company details");
 

@@ -7,6 +7,8 @@ $sql = mysqli_query($mysqli,"SELECT * FROM companies, settings WHERE companies.c
 $row = mysqli_fetch_assoc($sql);
 $company_id = intval($row['company_id']);
 $company_name = nullable_htmlentities($row['company_name']);
+$company_abbreviation = nullable_htmlentities($row['company_abbreviation']);
+$company_legal_name = nullable_htmlentities($row['company_legal_name']);
 $company_country = nullable_htmlentities($row['company_country']);
 $company_address = nullable_htmlentities($row['company_address']);
 $company_city = nullable_htmlentities($row['company_city']);
@@ -53,7 +55,27 @@ $company_initials = nullable_htmlentities(initials($company_name));
                                     <div class="input-group-prepend">
                                         <span class="input-group-text"><i class="fa fa-fw fa-building"></i></span>
                                     </div>
-                                    <input type="text" class="form-control" name="name" placeholder="Company Name" value="<?php echo $company_name; ?>" required>
+                                    <input type="text" class="form-control" name="name" placeholder="Company Name / Brand Name" value="<?php echo $company_name; ?>" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Shortened Name</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text"><i class="fa fa-fw fa-building"></i></span>
+                                    </div>
+                                    <input type="text" class="form-control" name="abbreviation" placeholder="CN" value="<?php echo $company_abbreviation; ?>">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Legal Name</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text"><i class="fa fa-fw fa-building"></i></span>
+                                    </div>
+                                    <input type="text" class="form-control" name="legal_name" placeholder="Company Name Inc." value="<?php echo $company_legal_name; ?>">
                                 </div>
                             </div>
 
