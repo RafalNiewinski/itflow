@@ -585,7 +585,7 @@ if (isset($_GET['ticket_id'])) {
                                         <label class="btn btn-outline-dark active">
                                             <input type="radio" name="public_reply_type" value="0" checked>Internal
                                         </label>
-                                        <?php if ($contact_email) { ?>
+                                        <?php if ($contact_email || mysqli_num_rows($sql_ticket_watchers) > 0) { ?>
                                         <label class="btn btn-outline-info">
                                             <input type="radio" name="public_reply_type" value="2">Public + Email
                                         </label>
