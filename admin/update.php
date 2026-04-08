@@ -31,7 +31,7 @@ $git_log = shell_exec("git log $repo_branch..origin/$repo_branch --pretty=format
                 </div>
             <?php } ?>
 
-            <?php if (LATEST_DATABASE_VERSION > CURRENT_DATABASE_VERSION) { ?>
+            <?php if (LATEST_DATABASE_VERSION > CURRENT_DATABASE_VERSION || LATEST_DATABASE_PATCH > CURRENT_DATABASE_PATCH) { ?>
                 <div class="alert alert-danger">
                     <h1 class="font-weight-bold text-center">⚠️ DANGER ⚠️</h1>
                     <h2 class="font-weight-bold text-center">Do NOT run updates without first taking a backup</h2>
@@ -44,6 +44,10 @@ $git_log = shell_exec("git log $repo_branch..origin/$repo_branch --pretty=format
                 <small class="text-secondary">Current DB Version: <?php echo CURRENT_DATABASE_VERSION; ?></small>
                 <br>
                 <small class="text-secondary">Latest DB Version: <?php echo LATEST_DATABASE_VERSION; ?></small>
+                <br>
+                <small class="text-secondary">Current DB Patch: <?php echo CURRENT_DATABASE_PATCH; ?></small>
+                <br>
+                <small class="text-secondary">Latest DB Patch: <?php echo LATEST_DATABASE_PATCH; ?></small>
                 <br>
                 <hr>
 
@@ -61,7 +65,9 @@ $git_log = shell_exec("git log $repo_branch..origin/$repo_branch --pretty=format
 
                 <?php } else { ?>
                     <p><strong>Application Release Version:<br><strong class="text-dark"><?php echo APP_VERSION; ?></strong></p>
+                    <p><strong>RKDB Patch:<br><strong class="text-dark"><?php echo RKDB_PATCH; ?></strong></p>
                     <p class="text-secondary">Database Version:<br><strong class="text-dark"><?php echo CURRENT_DATABASE_VERSION; ?></strong></p>
+                    <p class="text-secondary">RKDB Database Patch:<br><strong class="text-dark"><?php echo CURRENT_DATABASE_PATCH; ?></strong></p>
                     <p class="text-secondary">Code Commit:<br><strong class="text-dark"><?php echo $current_version; ?></strong></p>
                     <p class="text-muted">You are up to date!<br>Everything is going to be alright</p>
                     <i class="far fa-3x text-dark fa-smile-wink"></i><br>

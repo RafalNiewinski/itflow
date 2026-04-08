@@ -6,3 +6,4 @@
  */
 
 DEFINE("APP_VERSION", "26.03");
+DEFINE("RKDB_PATCH", "26.04.08");
