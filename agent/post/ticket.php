@@ -143,7 +143,7 @@ if (isset($_POST['add_ticket'])) {
 
         $footer = getEmailFooter();
         $subject = "Ticket Created [$ticket_prefix$ticket_number] - $ticket_subject";
-        $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>A ticket regarding \"$ticket_subject\" has been created for you.<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: Open<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br><$footer<br>$config_ticket_from_email<br>$company_phone";
+        $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>A ticket regarding \"$ticket_subject\" has been created for you.<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: Open<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br>$footer<br>$config_ticket_from_email<br>$company_phone";
 
         // Verify contact email is valid
         if (filter_var($contact_email, FILTER_VALIDATE_EMAIL)) {
@@ -2713,6 +2713,8 @@ if (isset($_POST['edit_ticket_schedule'])) {
     /// Create iCal event
     $cal_str = createiCalStr($schedule, $cal_subject, $cal_description, $cal_location);
 
+    $footer = getEmailFooter();
+
     // Notify the agent of the scheduled work
     $data[] = [
             'from' => $config_ticket_from_email,
@@ -2720,7 +2722,7 @@ if (isset($_POST['edit_ticket_schedule'])) {
             'recipient' => $user_email,
             'recipient_name' => $user_name,
             'subject' => "Ticket Scheduled - [$ticket_prefix$ticket_number] - $ticket_subject",
-            'body' => "Hello, " . $user_name . "<br><br>The ticket regarding $ticket_subject has been scheduled for $email_datetime.<br><br>--------------------------------<br><a href=\"https://$config_base_url/agent/ticket.php?ticket_id=$ticket_id$client_uri\">$ticket_link</a><br>--------------------------------<br><br>Please do not reply to this email. <br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Portal: https://$config_base_url/agent/ticket.php?ticket_id=$ticket_id$client_uri<br><br>~<br>$session_company_name<br>Support Department<br>$config_ticket_from_email",
+            'body' => "Hello, " . $user_name . "<br><br>The ticket regarding $ticket_subject has been scheduled for $email_datetime.<br><br>--------------------------------<br><a href=\"https://$config_base_url/agent/ticket.php?ticket_id=$ticket_id$client_uri\">$ticket_link</a><br>--------------------------------<br><br>Please do not reply to this email. <br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Portal: https://$config_base_url/agent/ticket.php?ticket_id=$ticket_id$client_uri<br>$footer<br>$config_ticket_from_email",
             'cal_str' => $cal_str
         ];
 
@@ -2743,11 +2745,8 @@ if (isset($_POST['edit_ticket_schedule'])) {
                             <br><br>
                             <strong>Ticket:</strong> $ticket_prefix$ticket_number<br>
                             <strong>Subject:</strong> $ticket_subject<br>
-                            <br><br>
                             <div class='footer'>
-                                ~<br>
-                                $session_company_name<br>
-                                Support Department<br>
+                                $footer<br>
                                 $config_ticket_from_email<br>
                             </div>
                             <div class='no-reply'>
@@ -2767,28 +2766,24 @@ if (isset($_POST['edit_ticket_schedule'])) {
                 'recipient' => $watcher_email,
                 'recipient_name' => $watcher_email,
                 'subject' => "Ticket Scheduled - [$ticket_prefix$ticket_number] - $ticket_subject",
-                'body' => mysqli_escape_string($mysqli, nullable_htmlentities("<div class='header'>
+                'body' => mysqli_escape_string($mysqli, "<div class='header'>
             Hello,
         </div>
         The ticket regarding $ticket_subject has been scheduled for $email_datetime.
         <br><br>
-        <a href='https://$config_base_url/client/ticket.php?id=$ticket_id' class='link-button'>$ticket_link</a>
+        <a href='https://$config_base_url/client/ticket.php?id=$ticket_id' class='link-button'>Access the ticket here</a>
         <br><br>
         Please do not reply to this email.
         <br><br>
         <strong>Ticket:</strong> $ticket_prefix$ticket_number<br>
         <strong>Subject:</strong> $ticket_subject<br>
-        <strong>Portal:</strong> <a href='https://$config_base_url/client/ticket.php?id=$ticket_id'>Access the ticket here</a>
-        <br><br>
         <div class='footer'>
-            ~<br>
-            $session_company_name<br>
-            Support Department<br>
+            $footer<br>
             $config_ticket_from_email<br>
         </div>
         <div class='no-reply'>
             This is an automated message. Please do not reply directly to this email.
-        </div>")),
+        </div>"),
                 'cal_str' => $cal_str
             ];
         }
@@ -2877,6 +2872,8 @@ if (isset($_GET['cancel_ticket_schedule'])) {
     $user_name = sanitizeInput($row['user_name']);
     $user_email = sanitizeInput($row['user_email']);
 
+    $footer = getEmailFooter();
+
     // Notify the agent of the cancellation
     $data[] = [
             // User Email
@@ -2885,7 +2882,7 @@ if (isset($_GET['cancel_ticket_schedule'])) {
             'recipient' => $user_email,
             'recipient_name' => $user_name,
             'subject' => "Ticket Schedule Cancelled - [$ticket_prefix$ticket_number] - $ticket_subject",
-            'body' => "Hello, " . $user_name . "<br><br>Scheduled work for the ticket regarding $ticket_subject has been cancelled.<br><br>--------------------------------<br><a href=\"https://$config_base_url/agent/ticket.php?ticket_id=$ticket_id$client_uri\">$ticket_link</a><br>--------------------------------<br><br>Please do not reply to this email. <br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Portal: https://$config_base_url/agent/ticket.php?id=$ticket_id&client_id=$client_id<br><br>~<br>$session_company_name<br>Support Department<br>$config_ticket_from_email",
+            'body' => "Hello, " . $user_name . "<br><br>Scheduled work for the ticket regarding $ticket_subject has been cancelled.<br><br>--------------------------------<br><a href=\"https://$config_base_url/agent/ticket.php?ticket_id=$ticket_id$client_uri\">$ticket_link</a><br>--------------------------------<br><br>Please do not reply to this email. <br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Portal: https://$config_base_url/agent/ticket.php?id=$ticket_id&client_id=$client_id<br>$footer<br>$config_ticket_from_email",
             'cal_str' => $cal_str
         ];
 
@@ -2908,11 +2905,8 @@ if (isset($_GET['cancel_ticket_schedule'])) {
                             <br><br>
                             <strong>Ticket:</strong> $ticket_prefix$ticket_number<br>
                             <strong>Subject:</strong> $ticket_subject<br>
-                            <br><br>
                             <div class='footer'>
-                                ~<br>
-                                $session_company_name<br>
-                                Support Department<br>
+                                $footer<br>
                                 $config_ticket_from_email<br>
                             </div>
                             <div class='no-reply'>
@@ -2931,28 +2925,24 @@ if (isset($_GET['cancel_ticket_schedule'])) {
                 'recipient' => $watcher_email,
                 'recipient_name' => $watcher_email,
                 'subject' => "Ticket Schedule Cancelled - [$ticket_prefix$ticket_number] - $ticket_subject",
-                'body' => mysqli_escape_string($mysqli, nullable_htmlentities("<div class='header'>
+                'body' => mysqli_escape_string($mysqli, "<div class='header'>
             Hello,
         </div>
         Scheduled work for the ticket regarding $ticket_subject has been cancelled.
         <br><br>
-        <a href='https://$config_base_url/client/ticket.php?id=$ticket_id' class='link-button'>$ticket_link</a>
+        <a href='https://$config_base_url/client/ticket.php?id=$ticket_id' class='link-button'>Access the ticket here</a>
         <br><br>
         Please do not reply to this email.
         <br><br>
         <strong>Ticket:</strong> $ticket_prefix$ticket_number<br>
         <strong>Subject:</strong> $ticket_subject<br>
-        <strong>Portal:</strong> <a href='https://$config_base_url/client/ticket.php?id=$ticket_id'>Access the ticket here</a>
-        <br><br>
         <div class='footer'>
-            ~<br>
-            $session_company_name<br>
-            Support Department<br>
+            $footer<br>
             $config_ticket_from_email<br>
         </div>
         <div class='no-reply'>
             This is an automated message. Please do not reply directly to this email.
-        </div>")),
+        </div>"),
                 'cal_str' => $cal_str
             ];
         }
