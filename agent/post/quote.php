@@ -801,7 +801,7 @@ if (isset($_GET['export_quote_pdf'])) {
     $row = mysqli_fetch_assoc($sql);
 
     $company_id = intval($row['company_id']);
-    $company_name = nullable_htmlentities($row['company_name']);
+    $company_name = nullable_htmlentities($row['company_legal_name']);
     $company_country = nullable_htmlentities($row['company_country']);
     $company_address = nullable_htmlentities($row['company_address']);
     $company_city = nullable_htmlentities($row['company_city']);

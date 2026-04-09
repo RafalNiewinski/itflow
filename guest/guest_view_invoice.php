@@ -64,7 +64,7 @@ $client_net_terms = intval($row['client_net_terms']);
 $sql = mysqli_query($mysqli, "SELECT * FROM companies, settings WHERE companies.company_id = settings.company_id AND companies.company_id = 1");
 $row = mysqli_fetch_assoc($sql);
 
-$company_name = nullable_htmlentities($row['company_name']);
+$company_name = nullable_htmlentities($row['company_legal_name']);
 $company_address = nullable_htmlentities($row['company_address']);
 $company_city = nullable_htmlentities($row['company_city']);
 $company_state = nullable_htmlentities($row['company_state']);
