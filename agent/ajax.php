@@ -228,7 +228,7 @@ if (isset($_GET['share_generate_link'])) {
 
     $sql = mysqli_query($mysqli,"SELECT * FROM companies WHERE company_id = 1");
     $row = mysqli_fetch_assoc($sql);
-    $company_name = sanitizeInput($row['company_name']);
+    $company_name = sanitizeInput($row['company_abbreviation']);
     $company_phone = sanitizeInput(formatPhoneNumber($row['company_phone'], $row['company_phone_country_code']));
 
     // Sanitize Config vars from get_settings.php
@@ -240,11 +240,13 @@ if (isset($_GET['share_generate_link'])) {
     // Send user e-mail, if specified
     if(!empty($config_smtp_host) && filter_var($item_email, FILTER_VALIDATE_EMAIL)){
 
+        $footer = getEmailFooter();
+
         $subject = "Time sensitive - $company_name secure link enclosed";
         if ($item_expires_friendly == "never") {
             $subject = "$company_name secure link enclosed";
         }
-        $body = "Hello,<br><br>$session_name from $company_name sent you a time sensitive secure link regarding \"$item_name\".<br><br>The link will expire in <strong>$item_expires_friendly</strong>$item_view_limit_wording.<br><br><strong><a href=\'$url\'>Click here to access your secure content</a></strong><br><br>--<br>$company_name - Support<br>$config_ticket_from_email<br>$company_phone";
+        $body = "Hello,<br><br>$session_name from $company_name sent you a time sensitive secure link regarding \"$item_name\".<br><br>The link will expire in <strong>$item_expires_friendly</strong>$item_view_limit_wording.<br><br><strong><a href=\'$url\'>Click here to access your secure content</a></strong><br>$footer<br>$config_ticket_from_email<br>$company_phone";
 
         // Add the intended recipient disclosure
         $body .= "<br><br><em>This email and any attachments are confidential and intended for the specified recipient(s) only. If you are not the intended recipient, please notify the sender and delete this email. Unauthorized use, disclosure, or distribution is prohibited.</em>";
@@ -507,14 +509,14 @@ if (isset($_POST['update_kanban_ticket'])) {
                     $config_base_url = sanitizeInput($config_base_url);
 
                     // Get Company Info
-                    $sql = mysqli_query($mysqli, "SELECT company_name, company_phone, company_phone_country_code FROM companies WHERE company_id = 1");
+                    $sql = mysqli_query($mysqli, "SELECT company_phone, company_phone_country_code FROM companies WHERE company_id = 1");
                     $row = mysqli_fetch_assoc($sql);
-                    $company_name = sanitizeInput($row['company_name']);
                     $company_phone = sanitizeInput(formatPhoneNumber($row['company_phone'], $row['company_phone_country_code']));
 
                     // EMAIL
+                    $footer = getEmailFooter();
                     $subject = "Ticket resolved - [$ticket_prefix$ticket_number] - $ticket_subject | (pending closure)";
-                    $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>Your ticket regarding $ticket_subject has been marked as solved and is pending closure.<br><br>If your request/issue is resolved, you can simply ignore this email. If you need further assistance, please reply or <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>re-open</a> to let us know! <br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br><br>--<br>$company_name - Support<br>$config_ticket_from_email<br>$company_phone";
+                    $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>Your ticket regarding $ticket_subject has been marked as solved and is pending closure.<br><br>If your request/issue is resolved, you can simply ignore this email. If you need further assistance, please reply or <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>re-open</a> to let us know! <br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br>$footer<br>$config_ticket_from_email<br>$company_phone";
 
                     // Check email valid
                     if (filter_var($contact_email, FILTER_VALIDATE_EMAIL)) {

@@ -494,7 +494,6 @@ if (isset($_GET['force_recurring'])) {
 
         $sql = mysqli_query($mysqli,"SELECT * FROM companies WHERE company_id = 1");
         $row = mysqli_fetch_assoc($sql);
-        $company_name = sanitizeInput($row['company_name']);
         $company_phone = sanitizeInput(formatPhoneNumber($row['company_phone'], $row['company_phone_country_code']));
         $company_email = sanitizeInput($row['company_email']);
         $company_website = sanitizeInput($row['company_website']);
@@ -505,8 +504,9 @@ if (isset($_GET['force_recurring'])) {
 
         // Email to client
 
+        $footer = getEmailFooter();
         $subject = "Invoice $invoice_prefix$invoice_number";
-        $body = "Hello $contact_name,<br><br>An invoice regarding \"$invoice_scope\" has been generated. Please view the details below.<br><br>Invoice: $invoice_prefix$invoice_number<br>Issue Date: $invoice_date<br>Total: $$invoice_amount<br>Due Date: $invoice_due<br><br><br>To view your invoice, please click <a href=\'https://$config_base_url/guest/guest_view_invoice.php?invoice_id=$new_invoice_id&url_key=$invoice_url_key\'>here</a>.<br><br><br>--<br>$company_name - Billing<br>$company_phone";
+        $body = "Hello $contact_name,<br><br>An invoice regarding \"$invoice_scope\" has been generated. Please view the details below.<br><br>Invoice: $invoice_prefix$invoice_number<br>Issue Date: $invoice_date<br>Total: $$invoice_amount<br>Due Date: $invoice_due<br><br><br>To view your invoice, please click <a href=\'https://$config_base_url/guest/guest_view_invoice.php?invoice_id=$new_invoice_id&url_key=$invoice_url_key\'>here</a>.<br><br>$footer<br>$company_phone";
 
 
         $data = [

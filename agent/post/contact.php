@@ -182,9 +182,9 @@ if (isset($_POST['edit_contact'])) {
         $config_base_url = sanitizeInput($config_base_url);
 
         // Get Company Phone Number
-        $sql = mysqli_query($mysqli,"SELECT company_name, company_phone FROM companies WHERE company_id = 1");
+        $sql = mysqli_query($mysqli,"SELECT company_abbreviation, company_phone FROM companies WHERE company_id = 1");
         $row = mysqli_fetch_assoc($sql);
-        $company_name = sanitizeInput($row['company_name']);
+        $company_name = sanitizeInput($row['company_abbreviation']);
         $company_phone = sanitizeInput(formatPhoneNumber($row['company_phone']));
 
         // Authentication info (azure, reset password, or tech-provided temporary password)
@@ -197,8 +197,9 @@ if (isset($_POST['edit_contact'])) {
             $password_info = mysqli_real_escape_string($mysqli, $_POST['contact_password'] . " -- Please change on first login");
         }
 
+        $footer = getEmailFooter();
         $subject = "Your new $company_name portal account";
-        $body = "Hello $name,<br><br>$company_name has created a support portal account for you. <br><br>Username: $email<br>Password: $password_info<br><br>Login URL: https://$config_base_url/client/<br><br>--<br>$company_name - Support<br>$config_ticket_from_email<br>$company_phone";
+        $body = "Hello $name,<br><br>$company_name has created a support portal account for you. <br><br>Username: $email<br>Password: $password_info<br><br>Login URL: https://$config_base_url/client/<br>$footer<br>$config_ticket_from_email<br>$company_phone";
 
         // Queue Mail
         $data = [

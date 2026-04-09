@@ -604,7 +604,6 @@ if (isset($_GET['email_quote'])) {
     $sql = mysqli_query($mysqli,"SELECT * FROM companies WHERE company_id = 1");
     $row = mysqli_fetch_assoc($sql);
 
-    $company_name = sanitizeInput($row['company_name']);
     $company_country = sanitizeInput($row['company_country']);
     $company_address = sanitizeInput($row['company_address']);
     $company_city = sanitizeInput($row['company_city']);
@@ -620,8 +619,9 @@ if (isset($_GET['email_quote'])) {
     $config_quote_from_email = sanitizeInput($config_quote_from_email);
     $config_base_url = sanitizeInput($config_base_url);
 
+    $footer = getEmailFooter();
     $subject = "Quote [$quote_scope]";
-    $body = "Hello $contact_name,<br><br>Thank you for your inquiry, we are pleased to provide you with the following estimate.<br><br><br>$quote_scope<br>Total Cost: " . numfmt_format_currency($currency_format, $quote_amount, $quote_currency_code) . "<br><br><br>View and accept your estimate online <a href=\'https://$config_base_url/guest/guest_view_quote.php?quote_id=$quote_id&url_key=$quote_url_key\'>here</a><br><br><br>--<br>$company_name - Sales<br>$config_quote_from_email<br>$company_phone";
+    $body = "Hello $contact_name,<br><br>Thank you for your inquiry, we are pleased to provide you with the following estimate.<br><br><br>$quote_scope<br>Total Cost: " . numfmt_format_currency($currency_format, $quote_amount, $quote_currency_code) . "<br><br><br>View and accept your estimate online <a href=\'https://$config_base_url/guest/guest_view_quote.php?quote_id=$quote_id&url_key=$quote_url_key\'>here</a><br><br>$footer<br>$config_quote_from_email<br>$company_phone";
 
     // Queue Mail
     $data = [

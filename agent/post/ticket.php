@@ -135,15 +135,15 @@ if (isset($_POST['add_ticket'])) {
         $ticket_assigned_to = intval($row['ticket_assigned_to']);
 
         // Get Company Phone Number
-        $sql = mysqli_query($mysqli, "SELECT company_name, company_phone, company_phone_country_code FROM companies WHERE company_id = 1");
+        $sql = mysqli_query($mysqli, "SELECT company_phone, company_phone_country_code FROM companies WHERE company_id = 1");
         $row = mysqli_fetch_assoc($sql);
-        $company_name = sanitizeInput($row['company_name']);
         $company_phone = sanitizeInput(formatPhoneNumber($row['company_phone'], $row['company_phone_country_code']));
 
         // EMAILING
 
+        $footer = getEmailFooter();
         $subject = "Ticket Created [$ticket_prefix$ticket_number] - $ticket_subject";
-        $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>A ticket regarding \"$ticket_subject\" has been created for you.<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: Open<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br><br>--<br>$company_name - Support<br>$config_ticket_from_email<br>$company_phone";
+        $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>A ticket regarding \"$ticket_subject\" has been created for you.<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: Open<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br><$footer<br>$config_ticket_from_email<br>$company_phone";
 
         // Verify contact email is valid
         if (filter_var($contact_email, FILTER_VALIDATE_EMAIL)) {
@@ -276,16 +276,16 @@ if (isset($_POST['edit_ticket'])) {
     if ($notify && (!empty($config_smtp_host) || !empty($config_smtp_provider))) {
 
         // Get Company Name Phone Number and Sanitize for Email Sending
-        $sql = mysqli_query($mysqli, "SELECT company_name, company_phone, company_phone_country_code FROM companies WHERE company_id = 1");
+        $sql = mysqli_query($mysqli, "SELECT company_phone, company_phone_country_code FROM companies WHERE company_id = 1");
         $row = mysqli_fetch_assoc($sql);
-        $company_name = sanitizeInput($row['company_name']);
         $company_phone = sanitizeInput(formatPhoneNumber($row['company_phone'], $row['company_phone_country_code']));
 
         // Email content
         $data = []; // Queue array
 
+        $footer = getEmailFooter();
         $subject = "Ticket Created - [$ticket_prefix$ticket_number] - $ticket_subject";
-        $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>A ticket regarding \"$ticket_subject\" has been created for you.<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br><br>--<br>$company_name - Support<br>$config_ticket_from_email<br>$company_phone";
+        $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>A ticket regarding \"$ticket_subject\" has been created for you.<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br>$footer<br>$config_ticket_from_email<br>$company_phone";
 
 
         // Only add contact to email queue if email is valid
@@ -409,9 +409,8 @@ if (isset($_POST['edit_ticket_contact'])) {
     if ($notify && filter_var($contact_email, FILTER_VALIDATE_EMAIL) && (!empty($config_smtp_host) || !empty($config_smtp_provider))) {
 
         // Get Company Phone Number
-        $sql = mysqli_query($mysqli, "SELECT company_name, company_phone, company_phone_country_code FROM companies WHERE company_id = 1");
+        $sql = mysqli_query($mysqli, "SELECT company_phone, company_phone_country_code FROM companies WHERE company_id = 1");
         $row = mysqli_fetch_assoc($sql);
-        $company_name = sanitizeInput($row['company_name']);
         $company_phone = sanitizeInput(formatPhoneNumber($row['company_phone'], $row['company_phone_country_code']));
 
         $config_ticket_from_email = sanitizeInput($config_ticket_from_email);
@@ -420,8 +419,9 @@ if (isset($_POST['edit_ticket_contact'])) {
         // Email content
         $data = []; // Queue array
 
+        $footer = getEmailFooter();
         $subject = "Ticket Created - [$ticket_prefix$ticket_number] - $ticket_subject";
-        $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>A ticket regarding \"$ticket_subject\" has been created for you.<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br><br>--<br>$company_name - Support<br>$config_ticket_from_email<br>$company_phone";
+        $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>A ticket regarding \"$ticket_subject\" has been created for you.<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br>$footer<br>$config_ticket_from_email<br>$company_phone";
 
         $data[] = [
             'from' => $config_ticket_from_email,
@@ -515,9 +515,8 @@ if (isset($_POST['add_ticket_watcher'])) {
     }
 
     // Get Company Phone Number
-    $sql = mysqli_query($mysqli, "SELECT company_name, company_phone, company_phone_country_code FROM companies WHERE company_id = 1");
+    $sql = mysqli_query($mysqli, "SELECT company_phone, company_phone_country_code FROM companies WHERE company_id = 1");
     $row = mysqli_fetch_assoc($sql);
-    $company_name = sanitizeInput($row['company_name']);
     $company_phone = sanitizeInput(formatPhoneNumber($row['company_phone'], $row['company_phone_country_code']));
 
     // Process each watcher in list
@@ -537,8 +536,9 @@ if (isset($_POST['add_ticket_watcher'])) {
                 // Email content
                 $data = []; // Queue array
 
+                $footer = getEmailFooter();
                 $subject = "Ticket Notification - [$ticket_prefix$ticket_number] - $ticket_subject";
-                $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello,<br><br>You have been added as a collaborator on this ticket regarding \"$ticket_subject\".<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status<br>Guest link: https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key<br><br>--<br>$company_name - Support<br>$config_ticket_from_email<br>$company_phone";
+                $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello,<br><br>You have been added as a collaborator on this ticket regarding \"$ticket_subject\".<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status<br>Guest link: https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key<br>$footer<br>$config_ticket_from_email<br>$company_phone";
 
                 $data[] = [
                     'from' => $config_ticket_from_email,
@@ -1318,14 +1318,14 @@ if (isset($_POST['bulk_resolve_tickets'])) {
                     $base_url = sanitizeInput($config_base_url);
 
                     // Get Company Info
-                    $sql = mysqli_query($mysqli, "SELECT company_name, company_phone, company_phone_country_code FROM companies WHERE company_id = 1");
+                    $sql = mysqli_query($mysqli, "SELECT company_phone, company_phone_country_code FROM companies WHERE company_id = 1");
                     $row = mysqli_fetch_assoc($sql);
-                    $company_name = sanitizeInput($row['company_name']);
                     $company_phone = sanitizeInput(formatPhoneNumber($row['company_phone'], $row['company_phone_country_code']));
 
                     // EMAIL
+                    $footer = getEmailFooter();
                     $subject = "Ticket resolved - [$ticket_prefix$ticket_number] - $ticket_subject | (pending closure)";
-                    $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>Your ticket regarding \"$ticket_subject\" has been marked as solved and is pending closure.<br><br>$details<br><br> If your request/issue is resolved, you can simply ignore this email. If you need further assistance, please reply or <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>re-open</a> to let us know! <br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Portal: https://$base_url/client/ticket.php?id=$ticket_id<br><br>--<br>$company_name - Support<br>$config_ticket_from_email<br>$company_phone";
+                    $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>Your ticket regarding \"$ticket_subject\" has been marked as solved and is pending closure.<br><br>$details<br><br> If your request/issue is resolved, you can simply ignore this email. If you need further assistance, please reply or <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>re-open</a> to let us know! <br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Portal: https://$base_url/client/ticket.php?id=$ticket_id<br>$footer<br>$config_ticket_from_email<br>$company_phone";
 
                     // Check email valid
                     if (filter_var($contact_email, FILTER_VALIDATE_EMAIL)) {
@@ -1491,9 +1491,8 @@ if (isset($_POST['bulk_ticket_reply'])) {
             $from_email = sanitizeInput($config_ticket_from_email);
             $base_url = sanitizeInput($config_base_url);
 
-            $sql = mysqli_query($mysqli, "SELECT company_name, company_phone, company_phone_country_code FROM companies WHERE company_id = 1");
+            $sql = mysqli_query($mysqli, "SELECT company_phone, company_phone_country_code FROM companies WHERE company_id = 1");
             $row = mysqli_fetch_assoc($sql);
-            $company_name = sanitizeInput($row['company_name']);
             $company_phone = sanitizeInput(formatPhoneNumber($row['company_phone'], $row['company_phone_country_code']));
 
             // Send e-mail to client if public update & email is set up
@@ -1501,8 +1500,9 @@ if (isset($_POST['bulk_ticket_reply'])) {
                 // Get ticket status name for the purpose of email notification
                 $ticket_status_name = sanitizeInput(mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT ticket_status_name FROM ticket_statuses WHERE ticket_status_id = $ticket_status"))['ticket_status_name']);
 
+                $footer = getEmailFooter();
                 $subject = "Ticket update - [$ticket_prefix$ticket_number] - $ticket_subject";
-                $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>Your ticket regarding $ticket_subject has been updated.<br><br>--------------------------------<br>$ticket_reply<br>--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status_name<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br><br>--<br>$company_name - Support<br>$from_email<br>$company_phone";
+                $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>Your ticket regarding $ticket_subject has been updated.<br><br>--------------------------------<br>$ticket_reply<br>--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status_name<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br>$footer<br>$from_email<br>$company_phone";
 
                 if (filter_var($contact_email, FILTER_VALIDATE_EMAIL)) {
 
@@ -1829,9 +1829,8 @@ if (isset($_POST['add_ticket_reply'])) {
         $config_ticket_from_email = sanitizeInput($config_ticket_from_email);
         $config_base_url = sanitizeInput($config_base_url);
 
-        $sql = mysqli_query($mysqli, "SELECT company_name, company_phone, company_phone_country_code FROM companies WHERE company_id = 1");
+        $sql = mysqli_query($mysqli, "SELECT company_phone, company_phone_country_code FROM companies WHERE company_id = 1");
         $row = mysqli_fetch_assoc($sql);
-        $company_name = sanitizeInput($row['company_name']);
         $company_phone = sanitizeInput(formatPhoneNumber($row['company_phone'], $row['company_phone_country_code']));
 
         // Send e-mail to client if public update & email is set up
@@ -1839,14 +1838,16 @@ if (isset($_POST['add_ticket_reply'])) {
 
             // Slightly different email subject/text depending on if this update set auto-close
 
+            $footer = getEmailFooter();
+
             if ($ticket_status == 4) {
                 // Resolved
                 $subject = "Ticket resolved - [$ticket_prefix$ticket_number] - $ticket_subject | (pending closure)";
-                $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>Your ticket regarding $ticket_subject has been marked as solved and is pending closure.<br><br>--------------------------------<br>$ticket_reply<br>--------------------------------<br><br>If your request/issue is resolved, you can simply ignore this email. If you need further assistance, please reply or <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>re-open</a> to let us know! <br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status_name<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br><br>--<br>$company_name - Support<br>$config_ticket_from_email<br>$company_phone";
+                $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>Your ticket regarding $ticket_subject has been marked as solved and is pending closure.<br><br>--------------------------------<br>$ticket_reply<br>--------------------------------<br><br>If your request/issue is resolved, you can simply ignore this email. If you need further assistance, please reply or <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>re-open</a> to let us know! <br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status_name<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br>$footer<br>$config_ticket_from_email<br>$company_phone";
             } else {
                 // Anything else
                 $subject = "Ticket update - [$ticket_prefix$ticket_number] - $ticket_subject";
-                $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>Your ticket regarding $ticket_subject has been updated.<br><br>--------------------------------<br>$ticket_reply<br>--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status_name<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br><br>--<br>$company_name - Support<br>$config_ticket_from_email<br>$company_phone";
+                $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>Your ticket regarding $ticket_subject has been updated.<br><br>--------------------------------<br>$ticket_reply<br>--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status_name<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br>$footer<br>$config_ticket_from_email<br>$company_phone";
             }
 
             if (filter_var($contact_email, FILTER_VALIDATE_EMAIL)) {
@@ -2170,14 +2171,14 @@ if (isset($_GET['resolve_ticket'])) {
         $config_base_url = sanitizeInput($config_base_url);
 
         // Get Company Info
-        $sql = mysqli_query($mysqli, "SELECT company_name, company_phone, company_phone_country_code FROM companies WHERE company_id = 1");
+        $sql = mysqli_query($mysqli, "SELECT company_phone, company_phone_country_code FROM companies WHERE company_id = 1");
         $row = mysqli_fetch_assoc($sql);
-        $company_name = sanitizeInput($row['company_name']);
         $company_phone = sanitizeInput(formatPhoneNumber($row['company_phone'], $row['company_phone_country_code']));
 
         // EMAIL
+        $footer = getEmailFooter();
         $subject = "Ticket resolved - [$ticket_prefix$ticket_number] - $ticket_subject | (pending closure)";
-        $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>Your ticket regarding $ticket_subject has been marked as solved and is pending closure.<br><br>If your request/issue is resolved, you can simply ignore this email. If you need further assistance, please reply or <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>re-open</a> to let us know! <br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br><br>--<br>$company_name - Support<br>$config_ticket_from_email<br>$company_phone";
+        $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>Your ticket regarding $ticket_subject has been marked as solved and is pending closure.<br><br>If your request/issue is resolved, you can simply ignore this email. If you need further assistance, please reply or <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>re-open</a> to let us know! <br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br>$footer<br>$config_ticket_from_email<br>$company_phone";
 
         // Check email valid
         if (filter_var($contact_email, FILTER_VALIDATE_EMAIL)) {
@@ -2269,14 +2270,14 @@ if (isset($_GET['close_ticket'])) {
         $config_base_url = sanitizeInput($config_base_url);
 
         // Get Company Info
-        $sql = mysqli_query($mysqli, "SELECT company_name, company_phone, company_phone_country_code FROM companies WHERE company_id = 1");
+        $sql = mysqli_query($mysqli, "SELECT company_phone, company_phone_country_code FROM companies WHERE company_id = 1");
         $row = mysqli_fetch_assoc($sql);
-        $company_name = sanitizeInput($row['company_name']);
         $company_phone = sanitizeInput(formatPhoneNumber($row['company_phone'], $row['company_phone_country_code']));
 
         // EMAIL
+        $footer = getEmailFooter();
         $subject = "Ticket closed - [$ticket_prefix$ticket_number] - $ticket_subject | (do not reply)";
-        $body = "Hello $contact_name,<br><br>Your ticket regarding \"$ticket_subject\" has been closed. <br><br> We hope the request/issue was resolved to your satisfaction, please provide your feedback <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>here</a>. <br>If you need further assistance, please raise a new ticket using the below details. Please do not reply to this email. <br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Portal: https://$config_base_url/client/ticket.php?id=$ticket_id<br><br>--<br>$company_name - Support<br>$config_ticket_from_email<br>$company_phone";
+        $body = "Hello $contact_name,<br><br>Your ticket regarding \"$ticket_subject\" has been closed. <br><br> We hope the request/issue was resolved to your satisfaction, please provide your feedback <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>here</a>. <br>If you need further assistance, please raise a new ticket using the below details. Please do not reply to this email. <br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Portal: https://$config_base_url/client/ticket.php?id=$ticket_id<br>$footer<br>$config_ticket_from_email<br>$company_phone";
 
         // Check email valid
         if (filter_var($contact_email, FILTER_VALIDATE_EMAIL)) {

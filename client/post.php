@@ -533,7 +533,6 @@ if (isset($_GET['add_payment_by_provider'])) {
     // Get ITFlow company details
     $sql = mysqli_query($mysqli,"SELECT * FROM companies WHERE company_id = 1");
     $row = mysqli_fetch_assoc($sql);
-    $company_name = sanitizeInput($row['company_name']);
     $company_country = sanitizeInput($row['company_country']);
     $company_address = sanitizeInput($row['company_address']);
     $company_city = sanitizeInput($row['company_city']);
@@ -623,8 +622,9 @@ if (isset($_GET['add_payment_by_provider'])) {
 
         // Email receipt
         if (!empty($config_smtp_host)) {
+            $footer = getEmailFooter();
             $subject = "Payment Received - Invoice $invoice_prefix$invoice_number";
-            $body = "Hello $contact_name,<br><br>We have received online payment for the amount of " . numfmt_format_currency($currency_format, $invoice_amount, $invoice_currency_code) . " for invoice <a href=\'https://$config_base_url/guest/guest_view_invoice.php?invoice_id=$invoice_id&url_key=$invoice_url_key\'>$invoice_prefix$invoice_number</a>. Please keep this email as a receipt for your records.<br><br>Amount Paid: " . numfmt_format_currency($currency_format, $invoice_amount, $invoice_currency_code) . "<br><br>Thank you for your business!<br><br><br>--<br>$company_name - Billing Department<br>$config_invoice_from_email<br>$company_phone";
+            $body = "Hello $contact_name,<br><br>We have received online payment for the amount of " . numfmt_format_currency($currency_format, $invoice_amount, $invoice_currency_code) . " for invoice <a href=\'https://$config_base_url/guest/guest_view_invoice.php?invoice_id=$invoice_id&url_key=$invoice_url_key\'>$invoice_prefix$invoice_number</a>. Please keep this email as a receipt for your records.<br><br>Amount Paid: " . numfmt_format_currency($currency_format, $invoice_amount, $invoice_currency_code) . "<br><br>Thank you for your business!<br><br>$footer<br>$config_invoice_from_email<br>$company_phone";
 
             // Queue Mail
             $data = [
@@ -641,7 +641,7 @@ if (isset($_GET['add_payment_by_provider'])) {
             // Email the internal notification address too
             if (!empty($config_invoice_paid_notification_email)) {
                 $subject = "Payment Received - $client_name - Invoice $invoice_prefix$invoice_number";
-                $body = "Hello, <br><br>This is a notification that an invoice has been paid in ITFlow. Below is a copy of the receipt sent to the client:-<br><br>--------<br><br>Hello $contact_name,<br><br>We have received online payment for the amount of " . numfmt_format_currency($currency_format, $invoice_amount, $invoice_currency_code) . " for invoice <a href=\'https://$config_base_url/guest/guest_view_invoice.php?invoice_id=$invoice_id&url_key=$invoice_url_key\'>$invoice_prefix$invoice_number</a>. Please keep this email as a receipt for your records.<br><br>Amount Paid: " . numfmt_format_currency($currency_format, $invoice_amount, $invoice_currency_code) . "<br><br>Thank you for your business!<br><br><br>--<br>$company_name - Billing Department<br>$config_invoice_from_email<br>$company_phone";
+                $body = "Hello, <br><br>This is a notification that an invoice has been paid in ITFlow. Below is a copy of the receipt sent to the client:-<br><br>--------<br><br>Hello $contact_name,<br><br>We have received online payment for the amount of " . numfmt_format_currency($currency_format, $invoice_amount, $invoice_currency_code) . " for invoice <a href=\'https://$config_base_url/guest/guest_view_invoice.php?invoice_id=$invoice_id&url_key=$invoice_url_key\'>$invoice_prefix$invoice_number</a>. Please keep this email as a receipt for your records.<br><br>Amount Paid: " . numfmt_format_currency($currency_format, $invoice_amount, $invoice_currency_code) . "<br><br>Thank you for your business!<br><br>$footer<br>$config_invoice_from_email<br>$company_phone";
 
                 $data[] = [
                     'from' => $config_invoice_from_email,
@@ -952,19 +952,18 @@ if (isset($_GET['stripe_save_card'])) {
     ");
     $row = mysqli_fetch_assoc($sql_settings);
 
-    $company_name = sanitizeInput($row['company_name']);
     $company_phone = sanitizeInput(formatPhoneNumber($row['company_phone'], $row['company_phone_country_code']));
     $config_invoice_from_email = sanitizeInput($row['config_invoice_from_email']);
     $config_invoice_from_name = sanitizeInput($row['config_invoice_from_name']);
 
     if (!empty($row['config_smtp_host'])) {
+        $footer = getEmailFooter();
         $subject = "Payment method saved";
         $body = "Hello $session_contact_name<br><br>
         Were writing to confirm that your payment details have been securely stored with Stripe our trusted payment processor.<br><br>
         You authorized us to automatically bill your card ($saved_payment_description) for future invoices.<br><br>
         You may update or remove your payment method at any time via the client portal.<br><br>
-        Thank you for your business!<br><br>
-        --<br>$company_name - Billing Department<br>$config_invoice_from_email<br>$company_phone";
+        Thank you for your business!<br>$footer<br>$config_invoice_from_email<br>$company_phone";
 
         $data = [[
             'from' => $config_invoice_from_email,

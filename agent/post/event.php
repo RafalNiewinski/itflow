@@ -97,7 +97,6 @@ if (isset($_POST['add_event'])) {
 
         $sql_company = mysqli_query($mysqli,"SELECT * FROM companies WHERE company_id = 1");
         $row = mysqli_fetch_assoc($sql_company);
-        $company_name = sanitizeInput($row['company_name']);
         $company_country = sanitizeInput($row['company_country']);
         $company_address = sanitizeInput($row['company_address']);
         $company_city = sanitizeInput($row['company_city']);
@@ -112,8 +111,9 @@ if (isset($_POST['add_event'])) {
         $config_mail_from_name = sanitizeInput($config_mail_from_name);
         $config_mail_from_email = sanitizeInput($config_mail_from_email);
 
+        $footer = getEmailFooter();
         $subject = "New Calendar Event";
-        $body = "Hello $contact_name,<br><br>A calendar event has been scheduled:<br><br>Event Title: $title<br>Event Date: $start<br><br><br>--<br>$company_name<br>$company_phone";
+        $body = "Hello $contact_name,<br><br>A calendar event has been scheduled:<br><br>Event Title: $title<br>Event Date: $start<br><br>$footer<br>$company_phone";
 
         $data = [
             [
@@ -171,7 +171,6 @@ if (isset($_POST['edit_event'])) {
 
         $sql_company = mysqli_query($mysqli,"SELECT * FROM companies WHERE company_id = 1");
         $row = mysqli_fetch_assoc($sql_company);
-        $company_name = sanitizeInput($row['company_name']);
         $company_country = sanitizeInput($row['company_country']);
         $company_address = sanitizeInput($row['company_address']);
         $company_city = sanitizeInput($row['company_city']);
@@ -187,8 +186,9 @@ if (isset($_POST['edit_event'])) {
         $config_mail_from_email = sanitizeInput($config_mail_from_email);
 
 
+        $footer = getEmailFooter();
         $subject = "Calendar Event Rescheduled";
-        $body = "Hello $contact_name,<br><br>A calendar event has been rescheduled:<br><br>Event Title: $title<br>Event Date: $start<br><br><br>--<br>$company_name<br>$company_phone";
+        $body = "Hello $contact_name,<br><br>A calendar event has been rescheduled:<br><br>Event Title: $title<br>Event Date: $start<br><br>$footer<br>$company_phone";
 
         $data = [
             [

@@ -32,10 +32,6 @@ if (isset($_GET['accept_quote'], $_GET['url_key'])) {
 
         // Internal email notification
 
-        $sql_company = mysqli_query($mysqli, "SELECT company_name FROM companies WHERE company_id = 1");
-        $row = mysqli_fetch_assoc($sql_company);
-        $company_name = sanitizeInput($row['company_name']);
-
         $sql_settings = mysqli_query($mysqli, "SELECT * FROM settings WHERE company_id = 1");
         $row = mysqli_fetch_assoc($sql_settings);
         $config_smtp_host = $row['config_smtp_host'];
@@ -49,8 +45,9 @@ if (isset($_GET['accept_quote'], $_GET['url_key'])) {
         $config_base_url = sanitizeInput($config_base_url);
 
         if (!empty($config_smtp_host) && !empty($config_quote_notification_email)) {
+            $footer = getEmailFooter();
             $subject = "Quote Accepted - $client_name - Quote $quote_prefix$quote_number";
-            $body = "Hello, <br><br>This is a notification that a quote has been accepted in ITFlow. <br><br>Client: $client_name<br>Quote: <a href=\'https://$config_base_url/quote.php?quote_id=$quote_id\'>$quote_prefix$quote_number</a><br><br>~<br>$company_name - Billing<br>$config_quote_from_email";
+            $body = "Hello, <br><br>This is a notification that a quote has been accepted in ITFlow. <br><br>Client: $client_name<br>Quote: <a href=\'https://$config_base_url/quote.php?quote_id=$quote_id\'>$quote_prefix$quote_number</a><br>$footer<br>$config_quote_from_email";
 
             $data[] = [
                 'from' => $config_quote_from_email,
@@ -97,10 +94,6 @@ if (isset($_GET['decline_quote'], $_GET['url_key'])) {
 
         // Internal email notification
 
-        $sql_company = mysqli_query($mysqli, "SELECT company_name FROM companies WHERE company_id = 1");
-        $row = mysqli_fetch_assoc($sql_company);
-        $company_name = sanitizeInput($row['company_name']);
-
         $sql_settings = mysqli_query($mysqli, "SELECT * FROM settings WHERE company_id = 1");
         $row = mysqli_fetch_assoc($sql_settings);
         $config_smtp_host = $row['config_smtp_host'];
@@ -114,8 +107,9 @@ if (isset($_GET['decline_quote'], $_GET['url_key'])) {
         $config_base_url = sanitizeInput($config_base_url);
 
         if (!empty($config_smtp_host) && !empty($config_quote_notification_email)) {
+            $footer = getEmailFooter();
             $subject = "Quote Declined - $client_name - Quote $quote_prefix$quote_number";
-            $body = "Hello, <br><br>This is a notification that a quote has been declined in ITFlow. <br><br>Client: $client_name<br>Quote: <a href=\'https://$config_base_url/quote.php?quote_id=$quote_id\'>$quote_prefix$quote_number</a><br><br>~<br>$company_name - Billing<br>$config_quote_from_email";
+            $body = "Hello, <br><br>This is a notification that a quote has been declined in ITFlow. <br><br>Client: $client_name<br>Quote: <a href=\'https://$config_base_url/quote.php?quote_id=$quote_id\'>$quote_prefix$quote_number</a><br>$footer<br>$config_quote_from_email";
 
             $data[] = [
                 'from' => $config_quote_from_email,

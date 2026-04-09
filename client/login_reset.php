@@ -39,9 +39,9 @@ $ip = sanitizeInput(getIP());
 $user_agent = sanitizeInput($_SERVER['HTTP_USER_AGENT']);
 
 // Get Company Info
-$company_sql = mysqli_query($mysqli, "SELECT company_name, company_phone FROM companies WHERE company_id = 1");
+$company_sql = mysqli_query($mysqli, "SELECT company_name, company_abbreviation, company_phone FROM companies WHERE company_id = 1");
 $company_results = mysqli_fetch_assoc($company_sql);
-$company_name = sanitizeInput($company_results['company_name']);
+$company_name = sanitizeInput($company_results['company_abbreviation']);
 $company_phone = sanitizeInput(formatPhoneNumber($company_results['company_phone']));
 $company_name_display = $company_results['company_name'];
 
@@ -78,8 +78,9 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
             mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Contact', log_action = 'Modify', log_description = 'Sent a portal password reset e-mail for $email.', log_ip = '$ip', log_user_agent = '$user_agent', log_client_id = $client");
 
             // Send reset email
+            $footer = getEmailFooter();
             $subject = "Password reset for $company_name Client Portal";
-            $body = "Hello $name,<br><br>Someone (probably you) has requested a new password for your account on $company_name\'s Client Portal. <br><br><b>Please <a href=\'$url\'>click here</a> to reset your password.</b> <br><br>Alternatively, copy and paste this URL into your browser:<br> $url<br><br><i>If you didn\'t request this change, you can safely ignore this email.</i><br><br>--<br>$company_name - Support<br>$config_ticket_from_email<br>$company_phone";
+            $body = "Hello $name,<br><br>Someone (probably you) has requested a new password for your account on $company_name\'s Client Portal. <br><br><b>Please <a href=\'$url\'>click here</a> to reset your password.</b> <br><br>Alternatively, copy and paste this URL into your browser:<br> $url<br><br><i>If you didn\'t request this change, you can safely ignore this email.</i><br>$footer<br>$config_ticket_from_email<br>$company_phone";
 
             $data = [
                 [
@@ -132,8 +133,9 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
             mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Contact User', log_action = 'Modify', log_description = 'Reset portal password for $email.', log_ip = '$ip', log_user_agent = '$user_agent', log_client_id = $client, log_user_id = $user_id");
 
             // Send confirmation email
+            $footer = getEmailFooter();
             $subject = "Password reset confirmation for $company_name Client Portal";
-            $body = "Hello $name,<br><br>Your password for your account on $company_name\'s Client Portal was successfully reset. You should be all set! <br><br><b>If you didn\'t reset your password, please get in touch ASAP.</b><br><br>--<br>$company_name - Support<br>$config_ticket_from_email<br>$company_phone";
+            $body = "Hello $name,<br><br>Your password for your account on $company_name\'s Client Portal was successfully reset. You should be all set! <br><br><b>If you didn\'t reset your password, please get in touch ASAP.</b><br>$footer<br>$config_ticket_from_email<br>$company_phone";
 
 
             $data = [

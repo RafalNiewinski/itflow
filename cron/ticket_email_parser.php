@@ -35,7 +35,6 @@ $config_ticket_email_parse_unknown_senders = intval($row['config_ticket_email_pa
 // Get company name & phone & timezone
 $sql = mysqli_query($mysqli, "SELECT * FROM companies, settings WHERE companies.company_id = settings.company_id AND companies.company_id = 1");
 $row = mysqli_fetch_assoc($sql);
-$company_name = sanitizeInput($row['company_name']);
 $company_phone = sanitizeInput(formatPhoneNumber($row['company_phone'], $row['company_phone_country_code']));
 
 // Check setting enabled
@@ -74,7 +73,7 @@ $allowed_extensions = array('jpg', 'jpeg', 'gif', 'png', 'webp', 'svg', 'pdf', '
  * Ticket / Reply helpers (unchanged)
  * ------------------------------------------------------------------ */
 function addTicket($contact_id, $contact_name, $contact_email, $client_id, $date, $subject, $message, $attachments, $original_message_file, $ccs) {
-    global $mysqli, $config_app_name, $company_name, $company_phone, $config_ticket_prefix, $config_ticket_client_general_notifications, $config_ticket_new_ticket_notification_email, $config_base_url, $config_ticket_from_name, $config_ticket_from_email, $config_ticket_default_billable, $allowed_extensions;
+    global $mysqli, $config_app_name, $company_phone, $config_ticket_prefix, $config_ticket_client_general_notifications, $config_ticket_new_ticket_notification_email, $config_base_url, $config_ticket_from_name, $config_ticket_from_email, $config_ticket_default_billable, $allowed_extensions;
     $bad_pattern = "/do[\W_]*not[\W_]*reply|no[\W_]*reply/i"; // Email addresses to ignore
 
     // Atomically increment and get the new ticket number
@@ -162,8 +161,9 @@ function addTicket($contact_id, $contact_name, $contact_email, $client_id, $date
     // External email
     $data = [];
     if ($config_ticket_client_general_notifications == 1 && !preg_match($bad_pattern, $contact_email)) {
+        $footer = getEmailFooter();
         $subject_email = "Ticket created - [$config_ticket_prefix$ticket_number] - $subject";
-        $body = "<i style='color: #808080'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>Thank you for your email. A ticket regarding \"$subject\" has been automatically created for you.<br><br>Ticket: $config_ticket_prefix$ticket_number<br>Subject: $subject<br>Status: New<br>Portal: <a href='https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$id&url_key=$url_key'>View ticket</a><br><br>--<br>$company_name - Support<br>$config_ticket_from_email<br>$company_phone";
+        $body = "<i style='color: #808080'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>Thank you for your email. A ticket regarding \"$subject\" has been automatically created for you.<br><br>Ticket: $config_ticket_prefix$ticket_number<br>Subject: $subject<br>Status: New<br>Portal: <a href='https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$id&url_key=$url_key'>View ticket</a><br>$footer<br>$config_ticket_from_email<br>$company_phone";
         $data[] = [
             'from' => $config_ticket_from_email,
             'from_name' => $config_ticket_from_name,
@@ -205,7 +205,7 @@ function addTicket($contact_id, $contact_name, $contact_email, $client_id, $date
 }
 
 function addReply($from_email, $date, $subject, $ticket_number, $message, $attachments) {
-    global $mysqli, $config_app_name, $company_name, $company_phone, $config_ticket_prefix, $config_base_url, $config_ticket_from_name, $config_ticket_from_email, $allowed_extensions;
+    global $mysqli, $config_app_name, $company_phone, $config_ticket_prefix, $config_base_url, $config_ticket_from_name, $config_ticket_from_email, $allowed_extensions;
 
     $ticket_reply_type = 'Client';
     // $message contains the raw HTML body from IMAP
@@ -269,8 +269,9 @@ function addReply($from_email, $date, $subject, $ticket_number, $message, $attac
 
             appNotify("Ticket", "Email parser: $from_email attempted to re-open ticket $config_ticket_prefix_esc$ticket_number_esc2 (ID $ticket_id) - check inbox manually to see email", "/agent/ticket.php?ticket_id=$ticket_id$client_uri", $client_id);
 
+            $footer = getEmailFooter();
             $email_subject = "Action required: This ticket is already closed";
-            $email_body = "Hi there, <br><br>You've tried to reply to a ticket that is closed - we won't see your response. <br><br>Please raise a new ticket by sending a new e-mail to our support address below. <br><br>--<br>$company_name - Support<br>$config_ticket_from_email<br>$company_phone";
+            $email_body = "Hi there, <br><br>You've tried to reply to a ticket that is closed - we won't see your response. <br><br>Please raise a new ticket by sending a new e-mail to our support address below. <br>$footer<br>$config_ticket_from_email<br>$company_phone";
 
             $data = [
                 [
