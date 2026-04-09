@@ -3,7 +3,7 @@
 
     <a class="brand-link" href="/agent/dashboard.php">
         <div class="brand-image"></div>
-        <span class="brand-text h4"><?php echo nullable_htmlentities($session_company_name); ?></span>
+        <span class="brand-text h4"><?php echo nullable_htmlentities($session_company_name_short); ?></span>
     </a>
 
     <!-- Sidebar -->
