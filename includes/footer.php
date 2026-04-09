@@ -12,6 +12,10 @@ if (basename(dirname($_SERVER['REQUEST_URI'])) === 'guest') { ?>
 <p class="text-center">
     <?php
         echo nullable_htmlentities($session_company_name);
+        if (!empty($session_company_legal_name)) {
+            echo "<br>by ";
+            echo nullable_htmlentities($session_company_legal_name);
+        }
         if (!$config_whitelabel_enabled) {
             echo '<br><small class="text-muted">Powered by ITFlow</small>';
         }

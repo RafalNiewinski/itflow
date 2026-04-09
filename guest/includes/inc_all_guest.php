@@ -15,10 +15,11 @@ $os = sanitizeInput(getOS($user_agent));
 $browser = sanitizeInput(getWebBrowser($user_agent));
 
 // Get Company Name
-$sql = mysqli_query($mysqli, "SELECT company_name FROM companies WHERE company_id = 1");
+$sql = mysqli_query($mysqli, "SELECT company_name, company_legal_name FROM companies WHERE company_id = 1");
 $row = mysqli_fetch_assoc($sql);
 
 $session_company_name = $row['company_name'];
+$session_company_legal_name = $row['company_legal_name'];
 
 // Page setup
 require_once $_SERVER['DOCUMENT_ROOT'] . '/includes/page_title.php';
