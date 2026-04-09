@@ -217,7 +217,14 @@ if ($ticket_row) {
     } ?>
 
 <div class="card-footer">
-    <?php echo "<i class='fas fa-phone fa-fw mr-2'></i>$company_phone | <i class='fas fa-globe fa-fw mr-2 ml-2'></i>$company_website"; ?>
+    <?php 
+        if (!empty($company_phone))
+            echo "<i class='fas fa-phone fa-fw mr-2'></i>$company_phone";
+        if (!empty($company_phone) && !empty($company_website))
+            echo " | ";
+        if (!empty($company_website))
+            echo "<i class='fas fa-globe fa-fw mr-2 ml-2'></i>$company_website";
+    ?>
 </div>
 
 <?php
