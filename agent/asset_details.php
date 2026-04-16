@@ -348,7 +348,10 @@ if (isset($_GET['asset_id'])) {
                     </div>
                     <div class="card-body">
                         <?php if ($location_name) { ?>
-                            <div><i class="fa fa-fw fa-map-marker-alt text-secondary mr-2"></i><?= $location_name_display; ?></div>
+                            <div><i class="fa fa-fw fa-building text-secondary mr-2"></i><?= $location_name_display; ?></div>
+                        <?php }
+                        if ($asset_physical_location) { ?>
+                            <div><i class="fa fa-fw fa-map-marker-alt text-secondary mr-2"></i><?= $asset_physical_location; ?></div>
                         <?php }
                         if ($contact_name) { ?>
                             <div class="mt-2"><i class="fa fa-fw fa-user text-secondary mr-2"></i><?= $contact_name_display; ?></div>
