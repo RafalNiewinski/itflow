@@ -519,6 +519,7 @@ if (isset($_GET['asset_id'])) {
                                             </div>
                                         </td>
                                         <th>Name / Port</th>
+                                        <th>Description</th>
                                         <th>Type</th>
                                         <th>Network</th>
                                         <th>IP</th>
@@ -583,6 +584,7 @@ if (isset($_GET['asset_id'])) {
                                                 <?= $interface_name ?> <?php if($interface_primary) { echo "<small class='text-primary'>(Primary)</small>"; } ?>
                                             </a>
                                         </td>
+                                        <td><?= $interface_description; ?></td>
                                         <td><?= $interface_type_display; ?></td>
                                         <td><?= $network_name_display; ?></td>
                                         <td>
