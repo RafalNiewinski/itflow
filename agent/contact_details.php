@@ -1101,6 +1101,14 @@ if (isset($_GET['contact_id'])) {
                             <tbody>
                             <?php
 
+                            $note_types_array = array (
+                                'Call'=>'fa-phone-alt',
+                                'Email'=>'fa-envelope',
+                                'Meeting'=>'fa-handshake',
+                                'In Person'=>'fa-people-arrows',
+                                'Note'=>'fa-sticky-note'
+                            );
+
                             while ($row = mysqli_fetch_assoc($sql_related_notes)) {
                                 $contact_note_id = intval($row['contact_note_id']);
                                 $contact_note_type = nullable_htmlentities($row['contact_note_type']);

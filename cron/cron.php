@@ -528,7 +528,7 @@ if ($config_send_invoice_reminders == 1) {
 
             // Late Charges
 
-            if ($config_invoice_late_fee_enable == 1) {
+            if ($config_invoice_late_fee_enable == 1 && $day > 1) {
 
                 $todays_date = date('Y-m-d');
                 $late_fee_amount = ($invoice_amount * $config_invoice_late_fee_percent) / 100;
