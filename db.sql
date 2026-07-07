@@ -629,6 +629,8 @@ DROP TABLE IF EXISTS `companies`;
 CREATE TABLE `companies` (
   `company_id` int(11) NOT NULL AUTO_INCREMENT,
   `company_name` varchar(200) NOT NULL,
+  `company_abbreviation` varchar(10) DEFAULT NULL,
+  `company_legal_name` varchar(200) DEFAULT NULL,
   `company_address` varchar(200) DEFAULT NULL,
   `company_city` varchar(200) DEFAULT NULL,
   `company_state` varchar(200) DEFAULT NULL,
@@ -1295,6 +1297,8 @@ CREATE TABLE `invoice_items` (
   `item_archived_at` datetime DEFAULT NULL,
   `item_tax_id` int(11) NOT NULL DEFAULT 0,
   `item_product_id` int(11) NOT NULL DEFAULT 0,
+  `item_quote_id` int(11) NOT NULL DEFAULT 0,
+  `item_recurring_invoice_id` int(11) NOT NULL DEFAULT 0,
   `item_invoice_id` int(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (`item_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -1537,6 +1541,23 @@ CREATE TABLE `payments` (
   `payment_invoice_id` int(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (`payment_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `pbs_usage_reports`
+--
+
+DROP TABLE IF EXISTS `pbs_usage_reports`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `pbs_usage_reports` (
+  `report_id` int(11) NOT NULL AUTO_INCREMENT,
+  `server_name` varchar(60) NOT NULL,
+  `report_date` datetime NOT NULL,
+  `namespace_path` varchar(200) NOT NULL,
+  `unique_size_gib` decimal(9,3) unsigned NOT NULL,
+  PRIMARY KEY (`report_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2998,4 +3019,4 @@ CREATE TABLE `vendors` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-04-08 22:50:48
+-- Dump completed on 2026-07-07 16:59:42

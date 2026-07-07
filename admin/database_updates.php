@@ -4401,6 +4401,21 @@ if (LATEST_DATABASE_VERSION > CURRENT_DATABASE_VERSION || LATEST_DATABASE_PATCH 
 
     }
 
+    if (CURRENT_DATABASE_PATCH == '1') {
+        mysqli_query($mysqli, "
+            CREATE TABLE `pbs_usage_reports` (
+              `report_id` int(11) NOT NULL AUTO_INCREMENT,
+              `server_name` varchar(60) NOT NULL,
+              `report_date` datetime NOT NULL,
+              `namespace_path` varchar(200) NOT NULL,
+              `unique_size_gib` decimal(9,3) UNSIGNED NOT NULL,
+              PRIMARY KEY (`report_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+        
+        mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_patch` = '2'");
+    }
+
     // if (CURRENT_DATABASE_VERSION == '2.4.4') {
     //     // Insert queries here required to update to DB version 2.4.5
     //     // Then, update the database to the next sequential version
