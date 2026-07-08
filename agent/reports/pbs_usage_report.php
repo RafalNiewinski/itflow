@@ -27,8 +27,12 @@ $from_date = new DateTime($from);
 $to_date = new DateTime($to);
 $report_days = $from_date->diff($to_date)->days + 1;
 
-$stmt = $mysqli->prepare("
-    SELECT
+// Filter specific server vars
+$server = isset($_GET['server']) ? $_GET['server'] : "All";
+$available_servers = mysqli_query($mysqli, "SELECT DISTINCT server_name FROM pbs_usage_reports ORDER BY server_name");
+
+// Main query
+$query = "SELECT
         server_name,
         namespace_path,
         MIN(report_date) as first_report,
@@ -38,10 +42,22 @@ $stmt = $mysqli->prepare("
         MAX(unique_size_gib) as max_usage,
         ROUND(AVG(unique_size_gib), 3) as average_usage
     FROM pbs_usage_reports
-    WHERE report_date BETWEEN ? AND ?
-    GROUP BY namespace_path, server_name
-");
-$stmt->bind_param("ss", $from_dt, $to_dt);
+    WHERE report_date BETWEEN ? AND ?";
+$query_param_types = "ss";
+$query_params = [$from_dt, $to_dt];
+
+// Filter by server if needed
+if ($server != "All") {
+    $query .= " AND server_name = ?";
+    $query_param_types .= "s";
+    $query_params[] = $server;
+}
+
+// Finally make grouping by path and server
+$query .= " GROUP BY namespace_path, server_name";
+
+$stmt = $mysqli->prepare($query);
+$stmt->bind_param($query_param_types, ...$query_params);
 $stmt->execute();
 $result = $stmt->get_result();
 
@@ -71,6 +87,17 @@ $result = $stmt->get_result();
                 <div class="col-md-3 mb-2">
                     <label class="mb-1">To</label>
                     <input type="date" class="form-control" name="to" value="<?php echo nullable_htmlentities($to); ?>">
+                </div>
+
+                <div class="col-md-3 mb-2">
+                    <label class="mb-1">Server</label>
+                    <select class="form-control" name="server">
+                        <option <?php if($server == "All") echo "selected"; ?>>All</option>
+                        <?php
+                        while ($row = mysqli_fetch_assoc($available_servers)) { ?>
+                            <option <?php if ($server == $row['server_name']) { ?> selected <?php } ?> > <?php echo $row['server_name']; ?></option>
+                        <?php } ?>
+                    </select>
                 </div>
 
                 <div class="col-md-2 mb-2 d-flex align-items-end ml-auto">
