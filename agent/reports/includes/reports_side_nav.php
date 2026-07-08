@@ -77,6 +77,12 @@
                             <p>Client Time Detail Audit</p>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a href="/agent/reports/pbs_usage_report.php" class="nav-link <?php if (basename($_SERVER["PHP_SELF"]) == "pbs_usage_report.php") { echo "active"; } ?>">
+                            <i class="nav-icon fas fa-database"></i>
+                            <p>PBS Usage Report</p>
+                        </a>
+                    </li>
 
                 <?php } // End financial reports IF statement ?>
 
