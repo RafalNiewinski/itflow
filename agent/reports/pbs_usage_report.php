@@ -23,8 +23,8 @@ $from_dt = $from . " 00:00:00";
 $to_dt   = $to   . " 23:59:59";
 
 // Count number of days
-$from_date = new DateTime($from);
-$to_date = new DateTime($to);
+$from_date = new DateTimeImmutable($from);
+$to_date = new DateTimeImmutable($to);
 $report_days = $from_date->diff($to_date)->days + 1;
 
 // Filter specific server vars
@@ -154,11 +154,27 @@ $result = $stmt->get_result();
             <tbody>
             <?php
             $had_rows = false;
+            $prev_report = DateTime::createFromImmutable($from_date)->modify('-1 day');
 
             while ($r = mysqli_fetch_assoc($result)) {
                 $had_rows = true;
 
-                // Reply row (indented)
+                if (!empty($namespace_path)) {
+                    $current_report = new DateTime($r['report_date'])->setTime(0,0);
+                    $missing_days = $prev_report->diff($current_report)->days - 1;
+                    for ($i = 0; $i < $missing_days; $i++) {
+                        ?>
+                        <tr>
+                            <td colspan="4" class="text-center text-danger">
+                                Missing report for <?php echo $prev_report->modify('+1 day')->format('Y-m-d'); ?>
+                            </td>
+                        </tr>
+                        <?php
+                    }
+
+                    $prev_report = $current_report;
+                }
+
                 ?>
                 <tr>
                     <td><?php echo $r['server_name']; ?></td>
@@ -168,8 +184,8 @@ $result = $stmt->get_result();
                     <td><?php echo $r['last_report'] ?></td>
                     <?php
                     if($r['report_count'] == $report_days) echo "<td>".$r['report_count']."</td>";
-                    else if($r['report_count'] < $report_days) echo '<td style="color: red;" class="font-weight-bold">'.$r['report_count']." (missing reports)</td>";
-                    else echo '<td style="color: green;" class="font-weight-bold">'.$r['report_count']." (extra reports)</td>";
+                    else if($r['report_count'] < $report_days) echo '<td class="font-weight-bold text-danger">'.$r['report_count']." (missing reports)</td>";
+                    else echo '<td class="font-weight-bold text-info">'.$r['report_count']." (extra reports)</td>";
                     ?>
                     <td class="text-right"><?php echo $r['min_usage'] ?> GiB</td>
                     <td class="text-right"><?php echo $r['max_usage'] ?> GiB</td>
@@ -185,11 +201,22 @@ $result = $stmt->get_result();
             if (!$had_rows) {
                 ?>
                 <tr>
-                    <td colspan="3" class="text-center text-muted">
+                    <td colspan="8" class="text-center text-muted">
                         No PBS usage found for provided query parameters.
                     </td>
                 </tr>
                 <?php
+            } else if (!empty($namespace_path)) {
+                $missing_days = $prev_report->diff($to_date)->days;
+                for ($i = 0; $i < $missing_days; $i++) {
+                    ?>
+                    <tr>
+                        <td colspan="4" class="text-center text-danger">
+                            Missing report for <?php echo $prev_report->modify('+1 day')->format('Y-m-d'); ?>
+                        </td>
+                    </tr>
+                    <?php
+                }
             }
             ?>
             </tbody>
