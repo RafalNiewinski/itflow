@@ -12,8 +12,8 @@ function isValidDateYmd($s) {
 }
 
 // Default range: current month
-$from = isset($_GET['from']) ? $_GET['from'] : date('Y-m-01');
-$to   = isset($_GET['to'])   ? $_GET['to']   : date('Y-m-t');
+$from = $_GET['from'] ?? date('Y-m-01');
+$to   = $_GET['to'] ?? date('Y-m-t');
 
 if (!isValidDateYmd($from)) $from = date('Y-m-01');
 if (!isValidDateYmd($to))   $to   = date('Y-m-t');
@@ -28,11 +28,16 @@ $to_date = new DateTime($to);
 $report_days = $from_date->diff($to_date)->days + 1;
 
 // Filter specific server vars
-$server = isset($_GET['server']) ? $_GET['server'] : "All";
+$server = $_GET['server'] ?? "All";
 $available_servers = mysqli_query($mysqli, "SELECT DISTINCT server_name FROM pbs_usage_reports ORDER BY server_name");
 
+// Filter specific backup object
+$namespace_path = trim(($_GET['namespace_path'] ?? ""));
+
 // Main query
-$query = "SELECT
+$query = empty($namespace_path) ?
+    // Aggregate query
+    "SELECT
         server_name,
         namespace_path,
         MIN(report_date) as first_report,
@@ -42,6 +47,9 @@ $query = "SELECT
         MAX(unique_size_gib) as max_usage,
         ROUND(AVG(unique_size_gib), 3) as average_usage
     FROM pbs_usage_reports
+    WHERE report_date BETWEEN ? AND ?" :
+    // Individual query
+    "SELECT * FROM pbs_usage_reports
     WHERE report_date BETWEEN ? AND ?";
 $query_param_types = "ss";
 $query_params = [$from_dt, $to_dt];
@@ -53,8 +61,15 @@ if ($server != "All") {
     $query_params[] = $server;
 }
 
-// Finally make grouping by path and server
-$query .= " GROUP BY namespace_path, server_name";
+// Filter by object path if needed
+if(!empty($namespace_path)) {
+    $query .= " AND namespace_path = ? ORDER BY report_date";
+    $query_param_types .= "s";
+    $query_params[] = $namespace_path;
+}
+// Finally make grouping by path and server (skip for single object reports)
+else
+    $query .= " GROUP BY namespace_path, server_name";
 
 $stmt = $mysqli->prepare($query);
 $stmt->bind_param($query_param_types, ...$query_params);
@@ -105,6 +120,11 @@ $result = $stmt->get_result();
                         <i class="fas fa-fw fa-filter mr-1"></i>Apply
                     </button>
                 </div>
+
+                <div class="col-md-3 mb-2">
+                    <label class="mb-1">Specific Object</label>
+                    <input type="text" class="form-control" name="namespace_path" value="<?php echo nullable_htmlentities($namespace_path); ?>">
+                </div>
             </div>
         </form>
     </div>
@@ -117,12 +137,17 @@ $result = $stmt->get_result();
             <tr>
                 <th>Server</th>
                 <th>Backup Object</th>
+                <?php if(empty($namespace_path)) { ?>
                 <th>First Report</th>
                 <th>Last Report</th>
                 <th>Report Count</th>
                 <th class="text-right" style="width: 150px;">Minimum Usage</th>
                 <th class="text-right" style="width: 150px;">Maximum Usage</th>
                 <th class="text-right" style="width: 150px;">Average Usage</th>
+                <?php } else { ?>
+                <th>Report Date</th>
+                <th class="text-right" style="width: 150px;">Usage</th>
+                <?php } ?>
             </tr>
             </thead>
 
@@ -138,6 +163,7 @@ $result = $stmt->get_result();
                 <tr>
                     <td><?php echo $r['server_name']; ?></td>
                     <td><?php echo $r['namespace_path'] ?></td>
+                    <?php if(empty($namespace_path)) { ?>
                     <td><?php echo $r['first_report'] ?></td>
                     <td><?php echo $r['last_report'] ?></td>
                     <?php
@@ -148,6 +174,10 @@ $result = $stmt->get_result();
                     <td class="text-right"><?php echo $r['min_usage'] ?> GiB</td>
                     <td class="text-right"><?php echo $r['max_usage'] ?> GiB</td>
                     <td class="text-right font-weight-bold"><?php echo $r['average_usage'] ?> GiB</td>
+                    <?php } else { ?>
+                    <td><?php echo $r['report_date'] ?></td>
+                    <td class="text-right font-weight-bold"><?php echo $r['unique_size_gib'] ?> GiB</td>
+                    <?php } ?>
                 </tr>
                 <?php
             }
@@ -156,7 +186,7 @@ $result = $stmt->get_result();
                 ?>
                 <tr>
                     <td colspan="3" class="text-center text-muted">
-                        No PBS usage found for this date range.
+                        No PBS usage found for provided query parameters.
                     </td>
                 </tr>
                 <?php
