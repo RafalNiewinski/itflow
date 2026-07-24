@@ -2,6 +2,8 @@
 
 require_once '../../../includes/modal_header.php';
 
+enforceUserPermission('module_client');
+
 $contact_id = intval($_GET['id']);
 
 $sql = mysqli_query($mysqli, "SELECT * FROM contacts
@@ -184,9 +186,12 @@ elseif ($document_count) { $first_tab = "documents"; }
 elseif ($file_count) { $first_tab = "files"; }
 elseif ($note_count) { $first_tab = "notes"; }
 
-// Generate the HTML form content using output buffering.
+enforceClientAccess();
+
 ob_start();
+
 ?>
+
 <div class="modal-header bg-dark">
     <h5 class="modal-title">
         <div class="media">
@@ -334,7 +339,8 @@ ob_start();
                         </a>
                     <?php } ?>
 
-                    <?php if ($credential_count) { ?>
+                    <?php
+                    if (lookupUserPermission('module_credential') && ($credential_count)) { ?>
                         <a class="nav-link <?= ($first_tab === "credentials") ? "active" : "" ?>"
                            data-toggle="pill"
                            href="#pills-contact-credentials<?= $contact_id ?>"
@@ -519,7 +525,7 @@ ob_start();
                 </div>
                 <?php } ?>
 
-                <?php if ($credential_count) { ?>
+                <?php if (lookupUserPermission('module_credential') && ($credential_count)) { ?>
                 <div class="tab-pane fade <?= ($first_tab === "credentials") ? "show active" : "" ?>" id="pills-contact-credentials<?= $contact_id ?>">
                     <div class="table-responsive-sm">
                         <table class="table table-striped table-borderless table-hover table-sm dataTables" style="width:100%">

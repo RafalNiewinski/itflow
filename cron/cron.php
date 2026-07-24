@@ -39,6 +39,7 @@ $config_invoice_late_fee_enable = intval($row['config_invoice_late_fee_enable'])
 $config_invoice_late_fee_percent = floatval($row['config_invoice_late_fee_percent']);
 
 // Mail Settings
+$config_smtp_provider = sanitizeInput($row['config_smtp_provider']);
 $config_smtp_host = $row['config_smtp_host'];
 $config_smtp_username = $row['config_smtp_username'];
 $config_smtp_password = $row['config_smtp_password'];
@@ -105,13 +106,14 @@ logApp("Cron", "info", "Cron Started");
 mysqli_query($mysqli, "TRUNCATE TABLE ticket_views");
 
 // Clean-up shared items that have been used
-mysqli_query($mysqli, "DELETE FROM shared_items WHERE item_views = item_view_limit");
+mysqli_query($mysqli, "DELETE FROM shared_items WHERE item_view_limit > 0 AND item_views >= item_view_limit");
 
 // Clean-up shared items that have expired
 mysqli_query($mysqli, "DELETE FROM shared_items WHERE item_expire_at < NOW()");
 
 // Invalidate any password reset links
 mysqli_query($mysqli, "UPDATE users SET user_password_reset_token = NULL WHERE user_archived_at IS NULL");
+mysqli_query($mysqli, "UPDATE users SET user_password_reset_token = NULL"); // TODO: Make this 'expired' tokens only when we actually use expiry
 
 // Clean-up old dismissed notifications
 mysqli_query($mysqli, "DELETE FROM notifications WHERE notification_dismissed_at < CURDATE() - INTERVAL 90 DAY");
@@ -375,7 +377,7 @@ if (mysqli_num_rows($sql_recurring_tickets) > 0) {
         $data = [];
 
         // Notify client by email their ticket has been raised, if general notifications are turned on & there is a valid contact email
-        if (!empty($config_smtp_host) && $config_ticket_client_general_notifications == 1 && filter_var($contact_email, FILTER_VALIDATE_EMAIL)) {
+        if (!empty($config_smtp_provider) && $config_ticket_client_general_notifications == 1 && filter_var($contact_email, FILTER_VALIDATE_EMAIL)) {
 
             $footer = getEmailFooter();
             $email_subject = "Ticket created - [$ticket_prefix$ticket_number] - $ticket_subject (scheduled)";
@@ -526,12 +528,23 @@ if ($config_send_invoice_reminders == 1) {
             $contact_name = sanitizeInput($row['contact_name']);
             $contact_email = sanitizeInput($row['contact_email']);
 
-            // Late Charges
+            // Sum payments already applied, derive the real balance owed
+            $sql_paid = mysqli_query($mysqli, "SELECT SUM(payment_amount) AS amount_paid FROM payments WHERE payment_invoice_id = $invoice_id");
+            $paid_row = mysqli_fetch_assoc($sql_paid);
+            $amount_paid = floatval($paid_row['amount_paid']);
 
+            $invoice_balance = $invoice_amount - $amount_paid;
+
+            // Nothing actually owed (e.g. paid in full but status lagging) - skip
+            if ($invoice_balance <= 0) {
+                continue;
+            }
+
+            // Late Charges
             if ($config_invoice_late_fee_enable == 1 && $day > 1) {
 
                 $todays_date = date('Y-m-d');
-                $late_fee_amount = ($invoice_amount * $config_invoice_late_fee_percent) / 100;
+                $late_fee_amount = ($invoice_balance * $config_invoice_late_fee_percent) / 100;
                 $new_invoice_amount = $invoice_amount + $late_fee_amount;
 
                 mysqli_query($mysqli, "UPDATE invoices SET invoice_amount = $new_invoice_amount WHERE invoice_id = $invoice_id");
@@ -543,15 +556,23 @@ if ($config_send_invoice_reminders == 1) {
 
                 appNotify("Invoice Late Charge", "Invoice $invoice_prefix$invoice_number for $client_name in the amount of $invoice_amount was charged a late fee of $late_fee_amount", "/agent/invoice.php?invoice_id=$invoice_id", $client_id);
 
+                // Roll the fee into the balance and total we report below
+                $invoice_amount = $new_invoice_amount;
+                $invoice_balance = $invoice_balance + $late_fee_amount;
+
             }
 
-            appNotify("Invoice Overdue", "Invoice $invoice_prefix$invoice_number for $client_name in the amount of $invoice_amount is overdue by $day days", "/agent/invoice.php?invoice_id=$invoice_id", $client_id);
+            appNotify("Invoice Overdue", "Invoice $invoice_prefix$invoice_number for $client_name with a balance of " . numfmt_format_currency($currency_format, $invoice_balance, $invoice_currency_code) . " is overdue by $day days", "/agent/invoice.php?invoice_id=$invoice_id", $client_id);
 
             $footer = getEmailFooter();
             $subject = "Overdue Invoice $invoice_prefix$invoice_number";
-            $body = "Hello $contact_name,<br><br>Our records indicate that we have not yet received payment for the invoice $invoice_prefix$invoice_number. We kindly request that you submit your payment as soon as possible. If you have any questions or concerns, please do not hesitate to contact us at $company_email or $company_phone.
+
+            // Only show the paid line if a payment has actually been applied
+            $paid_line = $amount_paid > 0 ? "Amount Paid: " . numfmt_format_currency($currency_format, $amount_paid, $invoice_currency_code) . "<br>" : "";
+
+            $body = "Hello $contact_name,<br><br>Our records indicate that we have not yet received payment in full for the invoice $invoice_prefix$invoice_number. We kindly request that you submit your payment as soon as possible. If you have any questions or concerns, please do not hesitate to contact us at $company_email or $company_phone.
                 <br>
-                Kindly review the invoice details mentioned below.<br><br>Invoice: $invoice_prefix$invoice_number<br>Issue Date: $invoice_date<br>Total: " . numfmt_format_currency($currency_format, $invoice_amount, $invoice_currency_code) . "<br>Due Date: $invoice_due<br>Over Due By: $day Days<br><br><br>To view your invoice, please click <a href=\'https://$config_base_url/guest/guest_view_invoice.php?invoice_id=$invoice_id&url_key=$invoice_url_key\'>here</a>.<br><br>$footer<br>$config_invoice_from_email<br>$company_phone";
+                Kindly review the invoice details mentioned below.<br><br>Invoice: $invoice_prefix$invoice_number<br>Issue Date: $invoice_date<br>Invoice Total: " . numfmt_format_currency($currency_format, $invoice_amount, $invoice_currency_code) . "<br>$paid_line" . "Balance Due: " . numfmt_format_currency($currency_format, $invoice_balance, $invoice_currency_code) . "<br>Due Date: $invoice_due<br>Over Due By: $day Days<br><br><br>To view your invoice, please click <a href=\'https://$config_base_url/guest/guest_view_invoice.php?invoice_id=$invoice_id&url_key=$invoice_url_key\'>here</a>.<br><br>$footer<br>$config_invoice_from_email<br>$company_phone";
 
             $mail = addToMailQueue([
                 [
@@ -877,7 +898,7 @@ while ($row = mysqli_fetch_assoc($sql_recurring_payments)) {
                     }
 
                     // RECEIPT EMAIL
-                    if (!empty($config_smtp_host)) {
+                    if (!empty($config_smtp_provider)) {
                         $footer = getEmailFooter();
                         $subject = "Payment Received - Invoice $invoice_prefix$invoice_number";
                         $body = "Hello $contact_name<br><br>We have received online payment for the amount of " . numfmt_format_currency($currency_format, $invoice_amount, $recurring_payment_currency_code) . " for invoice <a href=\\'https://$config_base_url/guest/guest_view_invoice.php?invoice_id=$invoice_id&url_key=$invoice_url_key\\'>$invoice_prefix$invoice_number</a>. Please keep this email as a receipt for your records.<br><br>Amount Paid: " . numfmt_format_currency($currency_format, $invoice_amount, $recurring_payment_currency_code) . "<br><br>Thank you for your business!<br><br>$footer<br>$config_invoice_from_email<br>$company_phone";
@@ -1253,9 +1274,6 @@ if ($updates->current_version !== $updates->latest_version) {
  *  FINISH UP
  * ###############################################################################################################
  */
-
-// Send Alert to inform Cron was run
-appNotify("Cron", "Cron successfully executed", "/admin/audit_log.php");
 
 // Logging
 logApp("Cron", "info", "Cron executed successfully");

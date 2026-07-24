@@ -166,7 +166,7 @@ if (isset($_POST['bulk_force_recurring_tickets'])) {
                 $data = [];
 
                 // Notify client by email their ticket has been raised, if general notifications are turned on & there is a valid contact email
-                if (!empty($config_smtp_host) && $config_ticket_client_general_notifications == 1 && filter_var($contact_email, FILTER_VALIDATE_EMAIL)) {
+                if (!empty($config_smtp_provider) && $config_ticket_client_general_notifications == 1 && filter_var($contact_email, FILTER_VALIDATE_EMAIL)) {
 
                     $footer = getEmailFooter();
                     $email_subject = "Ticket Created - [$ticket_prefix$ticket_number] - $ticket_subject (scheduled)";
@@ -309,7 +309,7 @@ if (isset($_GET['force_recurring_ticket'])) {
         $data = [];
 
         // Notify client by email their ticket has been raised, if general notifications are turned on & there is a valid contact email
-        if (!empty($config_smtp_host) && $config_ticket_client_general_notifications == 1 && filter_var($contact_email, FILTER_VALIDATE_EMAIL)) {
+        if (!empty($config_smtp_provider) && $config_ticket_client_general_notifications == 1 && filter_var($contact_email, FILTER_VALIDATE_EMAIL)) {
 
             $footer = getEmailFooter();
             $email_subject = "Ticket created - [$ticket_prefix$ticket_number] - $ticket_subject (scheduled)";
@@ -490,7 +490,7 @@ if (isset($_POST['bulk_assign_recurring_ticket'])) {
             mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Recurring Ticket', notification = '$recurring_ticket_count Recurring Tickets have been assigned to you by $session_name', notification_action = 'recurring_tickets.php?assigned=$assign_to', notification_client_id = $client_id, notification_user_id = $assign_to");
 
             // Agent Email Notification
-            if (!empty($config_smtp_host)) {
+            if (!empty($config_smtp_provider)) {
 
                 // Sanitize Config vars from get_settings.php
                 $config_ticket_from_name = sanitizeInput($config_ticket_from_name);
