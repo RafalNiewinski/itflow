@@ -2,28 +2,30 @@
 require_once "includes/inc_all_admin.php";
 
 
-$sql = mysqli_query($mysqli,"SELECT * FROM companies, settings WHERE companies.company_id = settings.company_id AND companies.company_id = 1");
+$sql = mysqli_query($mysqli,"SELECT company_address, company_city, company_country, company_currency, company_email,
+    settings.company_id, company_locale, company_logo, company_name, company_abbreviation, company_legal_name, company_phone,
+    company_phone_country_code, company_state, company_tax_id, company_website, company_zip FROM companies, settings WHERE companies.company_id = settings.company_id AND companies.company_id = 1");
 
 $row = mysqli_fetch_assoc($sql);
 $company_id = intval($row['company_id']);
-$company_name = nullable_htmlentities($row['company_name']);
-$company_abbreviation = nullable_htmlentities($row['company_abbreviation']);
-$company_legal_name = nullable_htmlentities($row['company_legal_name']);
-$company_country = nullable_htmlentities($row['company_country']);
-$company_address = nullable_htmlentities($row['company_address']);
-$company_city = nullable_htmlentities($row['company_city']);
-$company_state = nullable_htmlentities($row['company_state']);
-$company_zip = nullable_htmlentities($row['company_zip']);
+$company_name = escapeHtml($row['company_name']);
+$company_abbreviation = escapeHtml($row['company_abbreviation']);
+$company_legal_name = escapeHtml($row['company_legal_name']);
+$company_country = escapeHtml($row['company_country']);
+$company_address = escapeHtml($row['company_address']);
+$company_city = escapeHtml($row['company_city']);
+$company_state = escapeHtml($row['company_state']);
+$company_zip = escapeHtml($row['company_zip']);
 $company_phone_country_code = formatPhoneNumber($row['company_phone_country_code']);
-$company_phone = nullable_htmlentities(formatPhoneNumber($row['company_phone'], $company_phone_country_code));
-$company_email = nullable_htmlentities($row['company_email']);
-$company_website = nullable_htmlentities($row['company_website']);
-$company_logo = nullable_htmlentities($row['company_logo']);
-$company_locale = nullable_htmlentities($row['company_locale']);
-$company_currency = nullable_htmlentities($row['company_currency']);
-$company_tax_id = nullable_htmlentities($row['company_tax_id']);
+$company_phone = escapeHtml(formatPhoneNumber($row['company_phone'], $company_phone_country_code));
+$company_email = escapeHtml($row['company_email']);
+$company_website = escapeHtml($row['company_website']);
+$company_logo = escapeHtml($row['company_logo']);
+$company_locale = escapeHtml($row['company_locale']);
+$company_currency = escapeHtml($row['company_currency']);
+$company_tax_id = escapeHtml($row['company_tax_id']);
 
-$company_initials = nullable_htmlentities(initials($company_name));
+$company_initials = escapeHtml(initials($company_name));
 
 ?>
 
@@ -33,12 +35,12 @@ $company_initials = nullable_htmlentities(initials($company_name));
         </div>
         <div class="card-body">
             <form action="post.php" method="post" enctype="multipart/form-data" autocomplete="off">
-                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?>">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
 
                     <div class="row">
                         <div class="col-md-3 text-center">
                             <?php if ($company_logo) { ?>
-                                <img class="img-thumbnail" src="<?php echo "../uploads/settings/$company_logo"; ?>">
+                                <img class="img-thumbnail" src="<?= "../uploads/settings/$company_logo" ?>">
                                 <a href="post.php?remove_company_logo&csrf_token=<?= $_SESSION['csrf_token'] ?>" class="btn btn-outline-danger btn-block">Remove Logo</a>
                                 <hr>
                             <?php } ?>
@@ -55,7 +57,7 @@ $company_initials = nullable_htmlentities(initials($company_name));
                                     <div class="input-group-prepend">
                                         <span class="input-group-text"><i class="fa fa-fw fa-building"></i></span>
                                     </div>
-                                    <input type="text" class="form-control" name="name" placeholder="Company Name / Brand Name" value="<?php echo $company_name; ?>" required>
+                                    <input type="text" class="form-control" name="name" placeholder="Company Name / Brand Name" value="<?= $company_name ?>" required>
                                 </div>
                             </div>
 
@@ -65,7 +67,7 @@ $company_initials = nullable_htmlentities(initials($company_name));
                                     <div class="input-group-prepend">
                                         <span class="input-group-text"><i class="fa fa-fw fa-building"></i></span>
                                     </div>
-                                    <input type="text" class="form-control" name="abbreviation" placeholder="CN" value="<?php echo $company_abbreviation; ?>">
+                                    <input type="text" class="form-control" name="abbreviation" placeholder="CN" value="<?= $company_abbreviation; ?>">
                                 </div>
                             </div>
 
@@ -75,7 +77,7 @@ $company_initials = nullable_htmlentities(initials($company_name));
                                     <div class="input-group-prepend">
                                         <span class="input-group-text"><i class="fa fa-fw fa-building"></i></span>
                                     </div>
-                                    <input type="text" class="form-control" name="legal_name" placeholder="Company Name Inc." value="<?php echo $company_legal_name; ?>">
+                                    <input type="text" class="form-control" name="legal_name" placeholder="Company Name Inc." value="<?= $company_legal_name; ?>">
                                 </div>
                             </div>
 
@@ -85,7 +87,7 @@ $company_initials = nullable_htmlentities(initials($company_name));
                                     <div class="input-group-prepend">
                                         <span class="input-group-text"><i class="fa fa-fw fa-map-marker-alt"></i></span>
                                     </div>
-                                    <input type="text" class="form-control" name="address" placeholder="Street Address" value="<?php echo $company_address; ?>">
+                                    <input type="text" class="form-control" name="address" placeholder="Street Address" maxlength="200" value="<?= $company_address ?>">
                                 </div>
                             </div>
 
@@ -95,7 +97,7 @@ $company_initials = nullable_htmlentities(initials($company_name));
                                     <div class="input-group-prepend">
                                         <span class="input-group-text"><i class="fa fa-fw fa-city"></i></span>
                                     </div>
-                                    <input type="text" class="form-control" name="city" placeholder="City" value="<?php echo $company_city; ?>">
+                                    <input type="text" class="form-control" name="city" placeholder="City" maxlength="200" value="<?= $company_city ?>">
                                 </div>
                             </div>
 
@@ -105,7 +107,7 @@ $company_initials = nullable_htmlentities(initials($company_name));
                                     <div class="input-group-prepend">
                                         <span class="input-group-text"><i class="fa fa-fw fa-flag"></i></span>
                                     </div>
-                                    <input type="text" class="form-control" name="state" placeholder="State or Province" value="<?php echo $company_state; ?>">
+                                    <input type="text" class="form-control" name="state" placeholder="State or Province" maxlength="200" value="<?= $company_state ?>">
                                 </div>
                             </div>
 
@@ -115,7 +117,7 @@ $company_initials = nullable_htmlentities(initials($company_name));
                                     <div class="input-group-prepend">
                                         <span class="input-group-text"><i class="fab fa-fw fa-usps"></i></span>
                                     </div>
-                                    <input type="text" class="form-control" name="zip" placeholder="Zip or Postal Code" value="<?php echo $company_zip; ?>">
+                                    <input type="text" class="form-control" name="zip" placeholder="Zip or Postal Code" maxlength="200" value="<?= $company_zip ?>">
                                 </div>
                             </div>
 
@@ -128,7 +130,7 @@ $company_initials = nullable_htmlentities(initials($company_name));
                                     <select class="form-control select2" name="country">
                                         <option value="">- Country -</option>
                                         <?php foreach($countries_array as $country_name) { ?>
-                                            <option <?php if ($company_country == $country_name) { echo "selected"; } ?>><?php echo $country_name; ?></option>
+                                            <option <?php if ($company_country == $country_name) { echo "selected"; } ?>><?= $country_name ?></option>
                                         <?php } ?>
                                     </select>
                                 </div>
@@ -142,8 +144,8 @@ $company_initials = nullable_htmlentities(initials($company_name));
                                             <div class="input-group-prepend">
                                                 <span class="input-group-text"><i class="fa fa-fw fa-phone"></i></span>
                                             </div>
-                                            <input type="tel" class="form-control col-2" name="phone_country_code" value="<?php echo $company_phone_country_code; ?>" placeholder="+" maxlength="4">
-                                            <input type="tel" class="form-control" name="phone" value="<?php echo $company_phone; ?>" placeholder="Phone Number" maxlength="200">
+                                            <input type="tel" class="form-control col-2" name="phone_country_code" value="<?= $company_phone_country_code ?>" placeholder="+" maxlength="4">
+                                            <input type="tel" class="form-control" name="phone" value="<?= $company_phone ?>" placeholder="Phone Number" maxlength="200">
                                         </div>
                                     </div>
                                 </div>
@@ -155,7 +157,7 @@ $company_initials = nullable_htmlentities(initials($company_name));
                                     <div class="input-group-prepend">
                                         <span class="input-group-text"><i class="fa fa-fw fa-envelope"></i></span>
                                     </div>
-                                    <input type="email" class="form-control" name="email" placeholder="Email address" value="<?php echo $company_email; ?>">
+                                    <input type="email" class="form-control" name="email" placeholder="Email address" maxlength="200" value="<?= $company_email ?>">
                                 </div>
                             </div>
 
@@ -165,7 +167,7 @@ $company_initials = nullable_htmlentities(initials($company_name));
                                     <div class="input-group-prepend">
                                         <span class="input-group-text"><i class="fa fa-fw fa-globe"></i></span>
                                     </div>
-                                    <input type="text" class="form-control" name="website" placeholder="Website address" value="<?php echo $company_website; ?>">
+                                    <input type="text" class="form-control" name="website" placeholder="Website address" maxlength="200" value="<?= $company_website ?>">
                                 </div>
                             </div>
 
@@ -175,7 +177,7 @@ $company_initials = nullable_htmlentities(initials($company_name));
                                     <div class="input-group-prepend">
                                         <span class="input-group-text"><i class="fa fa-fw fa-balance-scale"></i></span>
                                     </div>
-                                    <input type="text" class="form-control" name="tax_id" value="<?php echo $company_tax_id; ?>" placeholder="Tax ID" maxlength="200">
+                                    <input type="text" class="form-control" name="tax_id" value="<?= $company_tax_id ?>" placeholder="Tax ID" maxlength="200">
                                 </div>
                             </div>
 

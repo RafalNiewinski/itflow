@@ -4,14 +4,16 @@ require_once '../../../includes/modal_header.php';
 
 $document_id = intval($_GET['document_id']);
 
-$sql = mysqli_query($mysqli, "SELECT * FROM documents
+$sql = mysqli_query($mysqli, "SELECT document_client_id, document_name FROM documents
     WHERE document_id = $document_id
     LIMIT 1
 ");
 
 $row = mysqli_fetch_assoc($sql);
-$document_name = nullable_htmlentities($row['document_name']);
+$document_name = escapeHtml($row['document_name']);
 $client_id = intval($row['document_client_id']);
+
+enforceClientAccess();
 
 ob_start();
 
@@ -51,11 +53,11 @@ ob_start();
                     ");
                     while ($row = mysqli_fetch_assoc($sql_files_select)) {
                         $file_id = intval($row['file_id']);
-                        $file_name = nullable_htmlentities($row['file_name']);
-                        $folder_name = nullable_htmlentities($row['folder_name']);
+                        $file_name = escapeHtml($row['file_name']);
+                        $folder_name = escapeHtml($row['folder_name']);
 
                         ?>
-                        <option value="<?php echo $file_id ?>"><?php echo "$folder_name/$file_name"; ?></option>
+                        <option value="<?= $file_id ?>"><?= "$folder_name/$file_name" ?></option>
                         <?php
                     }
                     ?>

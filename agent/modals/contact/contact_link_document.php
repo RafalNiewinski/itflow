@@ -4,29 +4,30 @@ require_once '../../../includes/modal_header.php';
 
 $contact_id = intval($_GET['id']);
 
-$sql = mysqli_query($mysqli, "SELECT * FROM contacts
+$sql = mysqli_query($mysqli, "SELECT contact_client_id, contact_name FROM contacts
     WHERE contact_id = $contact_id
     LIMIT 1
 ");
 
 $row = mysqli_fetch_assoc($sql);
-$contact_name = nullable_htmlentities($row['contact_name']);
+$contact_name = escapeHtml($row['contact_name']);
 $client_id = intval($row['contact_client_id']);
 
-// Generate the HTML form content using output buffering.
+enforceClientAccess();
+
 ob_start();
 
 ?>
 
 <div class="modal-header bg-dark">
-    <h5 class="modal-title"><i class="fa fa-fw fa-folder mr-2"></i>Link Document to <strong><?php echo $contact_name; ?></strong></h5>
+    <h5 class="modal-title"><i class="fa fa-fw fa-folder mr-2"></i>Link Document to <strong><?= $contact_name ?></strong></h5>
     <button type="button" class="close text-white" data-dismiss="modal">
         <span>&times;</span>
     </button>
 </div>
 <form action="post.php" method="post" autocomplete="off">
     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-    <input type="hidden" name="contact_id" value="<?php echo $contact_id; ?>">
+    <input type="hidden" name="contact_id" value="<?= $contact_id ?>">
     <div class="modal-body">
 
         <div class="form-group">
@@ -50,9 +51,9 @@ ob_start();
                     ");
                     while ($row = mysqli_fetch_assoc($sql_documents_select)) {
                         $document_id = intval($row['document_id']);
-                        $document_name = nullable_htmlentities($row['document_name']);
+                        $document_name = escapeHtml($row['document_name']);
                         ?>
-                        <option value="<?php echo $document_id ?>"><?php echo $document_name; ?></option>
+                        <option value="<?= $document_id ?>"><?= $document_name ?></option>
                         <?php
                     }
                     ?>

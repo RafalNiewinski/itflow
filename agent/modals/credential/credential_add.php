@@ -41,7 +41,7 @@ ob_start();
             <div class="tab-pane fade show active" id="pills-credential-details">
 
                 <?php if ($client_id) { ?>
-                    <input type="hidden" name="client_id" value="<?php echo $client_id; ?>">
+                    <input type="hidden" name="client_id" value="<?= $client_id ?>">
                 <?php } else { ?>
 
                     <div class="form-group">
@@ -54,11 +54,11 @@ ob_start();
                                 <option value="">- Select Client -</option>
                                 <?php
 
-                                $sql = mysqli_query($mysqli, "SELECT client_id, client_name FROM clients WHERE client_archived_at IS NULL $access_permission_query ORDER BY client_name ASC");
+                                $sql = mysqli_query($mysqli, "SELECT client_id, client_name FROM clients WHERE client_archived_at IS NULL " . clientScopeSql('clients.client_id') . " ORDER BY client_name ASC");
                                 while ($row = mysqli_fetch_assoc($sql)) {
                                     $client_id_select = intval($row['client_id']);
-                                    $client_name = nullable_htmlentities($row['client_name']); ?>
-                                    <option <?php if ($client_id == $client_id_select) { echo "selected"; } ?> value="<?php echo $client_id_select; ?>"><?php echo $client_name; ?></option>
+                                    $client_name = escapeHtml($row['client_name']); ?>
+                                    <option <?php if ($client_id == $client_id_select) { echo "selected"; } ?> value="<?= $client_id_select ?>"><?= $client_name ?></option>
 
                                 <?php } ?>
                             </select>
@@ -167,14 +167,14 @@ ob_start();
                             <option value="">- Select Contact -</option>
                             <?php
 
-                            $sql = mysqli_query($mysqli, "SELECT * FROM contacts WHERE contact_client_id = $client_id ORDER BY contact_name ASC");
+                            $sql = mysqli_query($mysqli, "SELECT contact_id, contact_name FROM contacts WHERE contact_client_id = $client_id ORDER BY contact_name ASC");
                             while ($row = mysqli_fetch_assoc($sql)) {
                                 $contact_id_select = intval($row['contact_id']);
-                                $contact_name = nullable_htmlentities($row['contact_name']);
+                                $contact_name = escapeHtml($row['contact_name']);
                                 ?>
                                 <option
                                     <?php if ($contact_id == $contact_id_select) { echo "selected"; } ?>
-                                    value="<?php echo $contact_id_select; ?>"><?php echo $contact_name; ?>
+                                    value="<?= $contact_id_select ?>"><?= $contact_name ?>
                                 </option>
 
                                 <?php
@@ -194,11 +194,11 @@ ob_start();
                             <option value="">- Select Asset -</option>
                             <?php
 
-                            $sql = mysqli_query($mysqli, "SELECT * FROM assets LEFT JOIN locations on asset_location_id = location_id WHERE asset_client_id = $client_id AND asset_archived_at IS NULL ORDER BY asset_name ASC");
+                            $sql = mysqli_query($mysqli, "SELECT asset_id, asset_name, location_name FROM assets LEFT JOIN locations on asset_location_id = location_id WHERE asset_client_id = $client_id AND asset_archived_at IS NULL ORDER BY asset_name ASC");
                             while ($row = mysqli_fetch_assoc($sql)) {
                                 $asset_id_select = intval($row['asset_id']);
-                                $asset_name = nullable_htmlentities($row['asset_name']);
-                                $asset_location = nullable_htmlentities($row['location_name']);
+                                $asset_name = escapeHtml($row['asset_name']);
+                                $asset_location = escapeHtml($row['location_name']);
 
                                 $asset_display_string = $asset_name;
                                 if (!empty($asset_location)) {
@@ -207,7 +207,7 @@ ob_start();
 
                                 ?>
                                 <option <?php if ($asset_id == $asset_id_select) { echo "selected"; } ?>
-                                    value="<?php echo $asset_id_select; ?>"><?php echo $asset_display_string; ?></option>
+                                    value="<?= $asset_id_select ?>"><?= $asset_display_string ?></option>
 
                                 <?php
                             }
@@ -233,12 +233,12 @@ ob_start();
                         <select class="form-control select2" name="tags[]" data-placeholder="Add some tags" multiple>
                             <?php
 
-                            $sql_tags_select = mysqli_query($mysqli, "SELECT * FROM tags WHERE tag_type = 4 ORDER BY tag_name ASC");
+                            $sql_tags_select = mysqli_query($mysqli, "SELECT tag_id, tag_name FROM tags WHERE tag_type = 4 ORDER BY tag_name ASC");
                             while ($row = mysqli_fetch_assoc($sql_tags_select)) {
                                 $tag_id_select = intval($row['tag_id']);
-                                $tag_name_select = nullable_htmlentities($row['tag_name']);
+                                $tag_name_select = escapeHtml($row['tag_name']);
                                 ?>
-                                <option value="<?php echo $tag_id_select; ?>"><?php echo $tag_name_select; ?></option>
+                                <option value="<?= $tag_id_select ?>"><?= $tag_name_select ?></option>
                             <?php } ?>
 
                         </select>

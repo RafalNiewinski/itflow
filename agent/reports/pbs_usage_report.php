@@ -81,7 +81,7 @@ $result = $stmt->get_result();
     <div class="card-header bg-dark py-2">
         <h3 class="card-title mt-2">
             <i class="fas fa-fw fa-database mr-2"></i>
-            Proxmox Backup Server Usage Report (<?php echo nullable_htmlentities($from); ?> to <?php echo nullable_htmlentities($to); ?>)
+            Proxmox Backup Server Usage Report (<?php echo escapeHtml($from); ?> to <?php echo escapeHtml($to); ?>)
         </h3>
         <div class="card-tools">
             <button type="button" class="btn btn-primary d-print-none" onclick="window.print();">
@@ -96,12 +96,12 @@ $result = $stmt->get_result();
             <div class="row">
                 <div class="col-md-3 mb-2">
                     <label class="mb-1">From</label>
-                    <input type="date" class="form-control" name="from" value="<?php echo nullable_htmlentities($from); ?>">
+                    <input type="date" class="form-control" name="from" value="<?php echo escapeHtml($from); ?>">
                 </div>
 
                 <div class="col-md-3 mb-2">
                     <label class="mb-1">To</label>
-                    <input type="date" class="form-control" name="to" value="<?php echo nullable_htmlentities($to); ?>">
+                    <input type="date" class="form-control" name="to" value="<?php echo escapeHtml($to); ?>">
                 </div>
 
                 <div class="col-md-3 mb-2">
@@ -123,7 +123,7 @@ $result = $stmt->get_result();
 
                 <div class="col-md-3 mb-2">
                     <label class="mb-1">Specific Object</label>
-                    <input type="text" class="form-control" name="namespace_path" value="<?php echo nullable_htmlentities($namespace_path); ?>">
+                    <input type="text" class="form-control" name="namespace_path" value="<?php echo escapeHtml($namespace_path); ?>">
                 </div>
             </div>
         </form>

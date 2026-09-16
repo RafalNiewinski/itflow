@@ -7,7 +7,7 @@ $client_id = intval($_GET['client_id'] ?? 0);
 if ($client_id) {
      $sql_location_select = mysqli_query($mysqli, "SELECT location_id, location_name FROM locations WHERE location_archived_at IS NULL AND location_client_id = $client_id ORDER BY location_name ASC");
 } else {
-    $sql_client_select = mysqli_query($mysqli, "SELECT client_id, client_name FROM clients WHERE client_archived_at IS NULL $access_permission_query ORDER BY client_name ASC");
+    $sql_client_select = mysqli_query($mysqli, "SELECT client_id, client_name FROM clients WHERE client_archived_at IS NULL " . clientScopeSql('clients.client_id') . " ORDER BY client_name ASC");
 }
 
 $sql_tags_select = mysqli_query($mysqli, "SELECT tag_id, tag_name FROM tags WHERE tag_type = 3 ORDER BY tag_name ASC");
@@ -64,7 +64,7 @@ ob_start();
 
                                 while ($row = mysqli_fetch_assoc($sql_client_select)) {
                                     $client_id_select = intval($row['client_id']);
-                                    $client_name = nullable_htmlentities($row['client_name']); ?>
+                                    $client_name = escapeHtml($row['client_name']); ?>
                                     <option <?php if ($client_id_select == $client_id) { echo "selected"; } ?> value="<?= $client_id_select ?>"><?= $client_name ?></option>
 
                                 <?php } ?>
@@ -138,7 +138,7 @@ ob_start();
                                     <span class="input-group-text"><i class="fa fa-fw fa-mobile-alt"></i></span>
                                 </div>
                                 <input type="tel" class="form-control col-2" name="mobile_country_code" placeholder="+" maxlength="4">
-                                <input type="tel" class="form-control" name="mobile" placeholder="Mobile Phone Number">
+                                <input type="tel" class="form-control" name="mobile" placeholder="Mobile Phone Number" maxlength="200">
                             </div>
                         </div>
                     </div>
@@ -150,7 +150,7 @@ ob_start();
                         <div class="input-group-prepend">
                             <span class="input-group-text"><i class="fa fa-fw fa-envelope"></i></span>
                         </div>
-                        <input type="email" class="form-control" name="email" id="contact_email" placeholder="Email Address" maxlength="200" onfocusout="contact_email_check()">
+                        <input type="email" class="form-control" name="email" id="contact_email" placeholder="Email Address" maxlength="200" onfocusout="checkContactEmail()">
                     </div>
                     <div class="mt-2">
                         <span class="text-info" id="contact_check_info"></span>
@@ -170,7 +170,7 @@ ob_start();
 
                             while ($row = mysqli_fetch_assoc($sql_location_select)) {
                                 $location_id = intval($row['location_id']);
-                                $location_name = nullable_htmlentities($row['location_name']);
+                                $location_name = escapeHtml($row['location_name']);
                             ?>
                                 <option value="<?= $location_id ?>"><?= $location_name ?></option>
                             <?php } ?>
@@ -290,7 +290,7 @@ ob_start();
 
                             while ($row = mysqli_fetch_assoc($sql_tags_select)) {
                                 $tag_id = intval($row['tag_id']);
-                                $tag_name = nullable_htmlentities($row['tag_name']);
+                                $tag_name = escapeHtml($row['tag_name']);
                                 ?>
                                 <option value="<?= $tag_id ?>"><?= $tag_name ?></option>
                             <?php } ?>
@@ -346,7 +346,7 @@ $(document).ready(function() {
 
 <script>
     // Checks contact emails
-    function contact_email_check() {
+    function checkContactEmail() {
         var email = document.getElementById("contact_email").value;
         //Send a GET request to ajax.php as ajax.php?contact_email_check=true&email=email
         jQuery.get(

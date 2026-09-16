@@ -1,6 +1,6 @@
 <?php
 
-require_once '../../../includes/modal_header.php';
+require_once '../../includes/modal_header.php';
 
 ob_start();
 
@@ -13,7 +13,7 @@ ob_start();
     </button>
 </div>
 <form action="post.php" method="post" autocomplete="off">
-    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?>">
+    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
 
     <div class="modal-body">
 
@@ -26,13 +26,13 @@ ob_start();
                 <select class="form-control select2" name="provider" required>
                     <option value="">- Select an AI Provider -</option>
                     <?php
-                        $sql_ai_providers = mysqli_query($mysqli, "SELECT * FROM ai_providers");
+                        $sql_ai_providers = mysqli_query($mysqli, "SELECT ai_provider_id, ai_provider_name FROM ai_providers");
                         while ($row = mysqli_fetch_assoc($sql_ai_providers)) {
                             $ai_provider_id = intval($row['ai_provider_id']);
-                            $ai_provider_name = nullable_htmlentities($row['ai_provider_name']);
+                            $ai_provider_name = escapeHtml($row['ai_provider_name']);
 
                         ?>
-                        <option value="<?php echo $ai_provider_id; ?>"><?php echo $ai_provider_name; ?></option>
+                        <option value="<?= $ai_provider_id ?>"><?= $ai_provider_name ?></option>
                     <?php } ?>
                 </select>
             </div>
@@ -44,7 +44,7 @@ ob_start();
                 <div class="input-group-prepend">
                     <span class="input-group-text"><i class="fa fa-fw fa-robot"></i></span>
                 </div>
-                <input type="text" class="form-control" name="model" placeholder="ex gpt-4">
+                <input type="text" class="form-control" name="model" placeholder="ex gpt-4" maxlength="200">
             </div>
         </div>
 
@@ -60,6 +60,17 @@ ob_start();
                     <option>Documentation</option>
                 </select>
             </div>
+        </div>
+
+        <div class="form-group">
+            <label>Temperature</label>
+            <div class="input-group">
+                <div class="input-group-prepend">
+                    <span class="input-group-text"><i class="fa fa-fw fa-thermometer-half"></i></span>
+                </div>
+                <input type="number" class="form-control" name="temperature" step="0.1" min="0" max="2" value="" placeholder="Provider default">
+            </div>
+            <small class="form-text text-muted">Optional. Leave blank to let the provider use its default - some newer models reject every other value.</small>
         </div>
 
         <div class="form-group">

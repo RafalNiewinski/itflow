@@ -1,6 +1,6 @@
 <?php
 
-require_once '../../../includes/modal_header.php';
+require_once '../../includes/modal_header.php';
 
 ob_start();
 
@@ -60,11 +60,11 @@ ob_start();
                     <option value="0">- No -</option>
                     <?php
 
-                    $sql_project_templates = mysqli_query($mysqli, "SELECT * FROM project_templates WHERE project_template_archived_at IS NULL ORDER BY project_template_name ASC");
+                    $sql_project_templates = mysqli_query($mysqli, "SELECT project_template_id, project_template_name FROM project_templates WHERE project_template_archived_at IS NULL ORDER BY project_template_name ASC");
                     while ($row = mysqli_fetch_assoc($sql_project_templates)) {
                         $project_template_id_select = intval($row['project_template_id']);
-                        $project_template_name_select = nullable_htmlentities($row['project_template_name']); ?>
-                        <option value="<?php echo $project_template_id_select; ?>"><?php echo $project_template_name_select; ?></option>
+                        $project_template_name_select = escapeHtml($row['project_template_name']); ?>
+                        <option value="<?= $project_template_id_select ?>"><?= $project_template_name_select ?></option>
 
                     <?php } ?>
                 </select>

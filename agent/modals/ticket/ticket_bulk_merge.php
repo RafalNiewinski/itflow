@@ -12,7 +12,7 @@ if (!empty($ticket_ids)) {
     $whereNotIn = "AND ticket_id NOT IN ($ids)";
 }
 
-$sql_merge = mysqli_query($mysqli, "SELECT * FROM tickets
+$sql_merge = mysqli_query($mysqli, "SELECT client_name, ticket_id, ticket_number, ticket_prefix, ticket_status_name, ticket_subject FROM tickets
     LEFT JOIN ticket_statuses ON ticket_status = ticket_status_id
     LEFT JOIN clients ON client_id = ticket_client_id
     WHERE ticket_closed_at IS NULL
@@ -52,11 +52,11 @@ ob_start();
                     <?php
                     while ($row = mysqli_fetch_assoc($sql_merge)) {
                         $ticket_id_merge = intval($row['ticket_id']);
-                        $ticket_prefix_merge = nullable_htmlentities($row['ticket_prefix']);
+                        $ticket_prefix_merge = escapeHtml($row['ticket_prefix']);
                         $ticket_number_merge = intval($row['ticket_number']);
-                        $ticket_status_name_merge = nullable_htmlentities($row['ticket_status_name']);
-                        $client_name_merge = nullable_htmlentities($row['client_name']);
-                        $ticket_subject_merge = nullable_htmlentities($row['ticket_subject']);
+                        $ticket_status_name_merge = escapeHtml($row['ticket_status_name']);
+                        $client_name_merge = escapeHtml($row['client_name']);
+                        $ticket_subject_merge = escapeHtml($row['ticket_subject']);
                         ?>
                         <option value="<?= $ticket_id_merge ?>">
                             <?= "$ticket_prefix_merge$ticket_number_merge ($ticket_status_name_merge) $client_name_merge -  $ticket_subject_merge" ?>

@@ -2,14 +2,14 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-dark">
-                <h5 class="modal-title"><i class="fa fa-fw fa-paperclip mr-2"></i>Associate File to <strong><?php echo $document_name; ?></strong></h5>
+                <h5 class="modal-title"><i class="fa fa-fw fa-paperclip mr-2"></i>Associate File to <strong><?= $document_name ?></strong></h5>
                 <button type="button" class="close text-white" data-dismiss="modal">
                     <span>&times;</span>
                 </button>
             </div>
             <form action="post.php" method="post" autocomplete="off">
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                <input type="hidden" name="document_id" value="<?php echo $document_id; ?>">
+                <input type="hidden" name="document_id" value="<?= $document_id ?>">
                 <div class="modal-body">
 
                     <div class="form-group">
@@ -20,16 +20,16 @@
                             <select class="form-control select2" name="file_id">
                                 <option value="">- Select a File -</option>
                                 <?php
-                                $sql_files_select = mysqli_query($mysqli, "SELECT * FROM files
+                                $sql_files_select = mysqli_query($mysqli, "SELECT file_id, file_name, folder_name FROM files
                                     LEFT JOIN folders ON folder_id = file_folder_id
                                     WHERE file_client_id = $client_id ORDER BY folder_name ASC, file_name ASC");
                                 while ($row = mysqli_fetch_assoc($sql_files_select)) {
                                     $file_id = intval($row['file_id']);
-                                    $file_name = nullable_htmlentities($row['file_name']);
-                                    $folder_name = nullable_htmlentities($row['folder_name']);
+                                    $file_name = escapeHtml($row['file_name']);
+                                    $folder_name = escapeHtml($row['folder_name']);
 
                                     ?>
-                                    <option value="<?php echo $file_id ?>"><?php echo "$folder_name/$file_name"; ?></option>
+                                    <option value="<?= $file_id ?>"><?= "$folder_name/$file_name" ?></option>
                                     <?php
                                 }
                                 ?>

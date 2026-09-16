@@ -1,6 +1,6 @@
 <?php
 
-require_once '../../../includes/modal_header.php';
+require_once '../../includes/modal_header.php';
 
 ob_start();
 
@@ -79,7 +79,7 @@ ob_start();
 
                 <?php
                 // Enumerate modules
-                $sql_modules = mysqli_query($mysqli, "SELECT * FROM modules");
+                $sql_modules = mysqli_query($mysqli, "SELECT module_description, module_id, module_name FROM modules");
                 while ($row_modules = mysqli_fetch_assoc($sql_modules)) {
 
                     $module_id = intval($row_modules['module_id']);
@@ -88,8 +88,8 @@ ob_start();
                     $module_name_raw = $row_modules['module_name'];
                     $module_name_display = ucfirst(str_replace("module_", "", $module_name_raw));
 
-                    $module_name_display_safe = nullable_htmlentities($module_name_display);
-                    $module_description = nullable_htmlentities($row_modules['module_description']);
+                    $module_name_display_safe = escapeHtml($module_name_display);
+                    $module_description = escapeHtml($row_modules['module_description']);
 
                     // default for new role
                     $module_permission = 0;

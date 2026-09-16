@@ -13,10 +13,10 @@
 
 <p class="text-center">
     <?php
-        echo nullable_htmlentities($session_company_name);
+        echo escapeHtml($session_company_name);
         if (!empty($session_company_legal_name)) {
             echo "<br>by ";
-            echo nullable_htmlentities($session_company_legal_name);
+            echo escapeHtml($session_company_legal_name);
         }
         if (!$config_whitelabel_enabled) {
             echo '<br><small class="text-muted">Powered by ITFlow</small>';
@@ -28,13 +28,13 @@
 <?php require_once $_SERVER['DOCUMENT_ROOT'] . '/includes/inc_confirm_modal.php'; ?>
 
 <!-- jQuery -->
-<script src="/plugins/jquery/jquery.min.js"></script>
+<script src="/libs/jquery/jquery.min.js"></script>
 
 <!-- Bootstrap 4 -->
-<script src="/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/libs/bootstrap/js/bootstrap.bundle.min.js"></script>
 
 <!--- TinyMCE -->
-<script src="/plugins/tinymce/tinymce.min.js" referrerpolicy="origin"></script>
+<script src="/libs/tinymce/tinymce.min.js" referrerpolicy="origin"></script>
 
 <script>
     

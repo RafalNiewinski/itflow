@@ -5,5 +5,5 @@
  * Update this file each time we merge develop into master. Format is YY.MM (add a .v if there is more than one release a month.
  */
 
-DEFINE("APP_VERSION", "26.07.1");
-DEFINE("RKDB_PATCH", "26.07.24");
+DEFINE("APP_VERSION", "26.08.2");
+DEFINE("RKDB_PATCH", "26.09.17");

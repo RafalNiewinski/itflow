@@ -33,10 +33,10 @@ ob_start();
                         <option value="">- Select Client -</option>
                         <?php
 
-                        $sql = mysqli_query($mysqli, "SELECT client_id, client_name FROM clients WHERE client_archived_at IS NULL $access_permission_query ORDER BY client_name ASC");
+                        $sql = mysqli_query($mysqli, "SELECT client_id, client_name FROM clients WHERE client_archived_at IS NULL " . clientScopeSql('clients.client_id') . " ORDER BY client_name ASC");
                         while ($row = mysqli_fetch_assoc($sql)) {
                             $client_id_select = intval($row['client_id']);
-                            $client_name_select = nullable_htmlentities($row['client_name']); ?>
+                            $client_name_select = escapeHtml($row['client_name']); ?>
                             <option value="<?= $client_id_select ?>"><?= $client_name_select ?></option>
 
                         <?php } ?>
@@ -55,13 +55,13 @@ ob_start();
                 <select class="form-control" name="software_template_id" required>
                     <option value="">- Select Template -</option>
                     <?php
-                    $sql_software_templates = mysqli_query($mysqli, "SELECT * FROM software_templates WHERE software_template_archived_at IS NULL ORDER BY software_template_name ASC");
+                    $sql_software_templates = mysqli_query($mysqli, "SELECT software_template_id, software_template_name FROM software_templates WHERE software_template_archived_at IS NULL ORDER BY software_template_name ASC");
                     while ($row = mysqli_fetch_assoc($sql_software_templates)) {
                         $software_template_id = intval($row['software_template_id']);
-                        $software_template_name = nullable_htmlentities($row['software_template_name']);
+                        $software_template_name = escapeHtml($row['software_template_name']);
 
                         ?>
-                        <option value="<?php echo $software_template_id ?>"><?php echo $software_template_name; ?></option>
+                        <option value="<?= $software_template_id ?>"><?= $software_template_name ?></option>
                     <?php } ?>
 
                 </select>
