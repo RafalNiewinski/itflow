@@ -97,7 +97,7 @@ if (isset($_GET['recurring_invoice_id'])) {
     $page_title = "{$row['recurring_invoice_prefix']}{$row['recurring_invoice_number']}";
 
     $sql = mysqli_query($mysqli, "SELECT company_address, company_city, company_country, company_email, company_id, company_logo,
-        company_name, company_phone, company_phone_country_code, company_state, company_website,
+        company_name, company_legal_name, company_phone, company_phone_country_code, company_state, company_website,
         company_zip FROM companies WHERE company_id = 1");
     $row = mysqli_fetch_assoc($sql);
 

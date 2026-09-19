@@ -56,7 +56,7 @@ if ($session_user_archived_at !== null) {
 }
 
 // Load company session vars
-$sql = mysqli_query($mysqli, "SELECT company_country, company_currency, company_locale, company_logo, company_name FROM companies WHERE company_id = 1");
+$sql = mysqli_query($mysqli, "SELECT company_country, company_currency, company_locale, company_logo, company_name, company_legal_name FROM companies WHERE company_id = 1");
 $row = mysqli_fetch_assoc($sql);
 
 $session_company_name = $row['company_name'];

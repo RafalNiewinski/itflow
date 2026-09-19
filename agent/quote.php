@@ -82,7 +82,7 @@ if (isset($_GET['quote_id'])) {
     $page_title = "{$row['quote_prefix']}{$row['quote_number']}";
 
     $sql = mysqli_query($mysqli, "SELECT company_address, company_city, company_country, company_email, settings.company_id,
-        company_logo, company_name, company_phone, company_phone_country_code, company_state,
+        company_logo, company_name, company_legal_name, company_phone, company_phone_country_code, company_state,
         company_website, company_zip FROM companies, settings WHERE companies.company_id = settings.company_id AND companies.company_id = 1");
     $row = mysqli_fetch_assoc($sql);
 
