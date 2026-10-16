@@ -671,7 +671,7 @@ foreach ($messages as $message) {
         $from_domain = escapeSql(end($from_domain));
 
         // Subject
-        $subject = escapeSql(mb_decode_mimeheader((string)$message->subject()) ?: 'No Subject');
+        $subject = escapeSql((string)$message->subject() ?: 'No Subject');
 
         // Skip vacation/out-of-office auto-responders to prevent mail loops (RFC 3834)
         // NDRs use "auto-generated" and are still handled by the NDR logic below
@@ -952,7 +952,7 @@ foreach ($messages as $message) {
                 $message->move($targetFolderPath);
                 // optional: logApp("Cron-Email-Parser", "info", "Moved message to ITFlow");
             } catch (\Throwable $e) {
-                $subj = mb_decode_mimeheader((string)$message->subject());
+                $subj = (string)$message->subject();
                 $uid  = $message->uid();
                 $path = $targetFolder->path();
                 logApp(
