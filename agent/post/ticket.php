@@ -2940,8 +2940,11 @@ if (isset($_POST['edit_ticket_schedule'])) {
 
     $footer = getEmailFooter();
 
+    $data = [];
+
     // Notify the agent of the scheduled work
-    $data[] = [
+    if (!empty($user_email)) {
+        $data[] = [
             'from' => $config_ticket_from_email,
             'from_name' => $config_ticket_from_name,
             'recipient' => $user_email,
@@ -2950,6 +2953,7 @@ if (isset($_POST['edit_ticket_schedule'])) {
             'body' => "Hello, " . $user_name . "<br><br>The ticket regarding $ticket_subject has been scheduled for $email_datetime.<br><br>--------------------------------<br><a href=\"https://$config_base_url/agent/ticket.php?ticket_id=$ticket_id$client_uri\">$ticket_link</a><br>--------------------------------<br><br>Please do not reply to this email. <br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Portal: https://$config_base_url/agent/ticket.php?ticket_id=$ticket_id$client_uri<br>$footer<br>$config_ticket_from_email",
             'cal_str' => $cal_str
         ];
+    }
 
     if ($config_ticket_client_general_notifications) {
         // Notify the ticket contact of the scheduled work
@@ -3103,8 +3107,11 @@ if (isset($_GET['cancel_ticket_schedule'])) {
 
     $footer = getEmailFooter();
 
+    $data = [];
+
     // Notify the agent of the cancellation
-    $data[] = [
+    if (!empty($user_email)) {
+        $data[] = [
             // User Email
             'from' => $config_ticket_from_email,
             'from_name' => $config_ticket_from_name,
@@ -3114,6 +3121,7 @@ if (isset($_GET['cancel_ticket_schedule'])) {
             'body' => "Hello, " . $user_name . "<br><br>Scheduled work for the ticket regarding $ticket_subject has been cancelled.<br><br>--------------------------------<br><a href=\"https://$config_base_url/agent/ticket.php?ticket_id=$ticket_id$client_uri\">$ticket_link</a><br>--------------------------------<br><br>Please do not reply to this email. <br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Portal: https://$config_base_url/agent/ticket.php?id=$ticket_id&client_id=$client_id<br>$footer<br>$config_ticket_from_email",
             'cal_str' => $cal_str
         ];
+    }
 
     if ($config_ticket_client_general_notifications) {
         // Notify the ticket contact of the cancellation
