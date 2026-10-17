@@ -8,9 +8,9 @@ require_once "includes/inc_all_admin.php";
 
 $sql = mysqli_query(
     $mysqli,
-    "SELECT SQL_CALC_FOUND_ROWS email_attempts, email_failed_at, email_from, email_from_name, email_id, email_queued_at,
-        email_recipient, email_recipient_name, email_sent_at, email_status, email_subject FROM email_queue
-    WHERE (email_id LIKE '%$q%' OR email_from LIKE '%$q%' OR email_from_name LIKE '%$q%' OR email_recipient LIKE '%$q%' OR email_recipient_name LIKE '%$q%' OR email_subject LIKE '%$q%')
+    "SELECT SQL_CALC_FOUND_ROWS email_attempts, email_failed_at, email_failed_recipients, email_from, email_from_name, email_id, email_queued_at,
+        email_recipient, email_recipient_name, email_cc, email_sent_at, email_status, email_subject FROM email_queue
+    WHERE (email_id LIKE '%$q%' OR email_from LIKE '%$q%' OR email_from_name LIKE '%$q%' OR email_recipient LIKE '%$q%' OR email_recipient_name LIKE '%$q%' OR email_cc LIKE '%$q%' OR email_failed_recipients LIKE '%$q%' OR email_subject LIKE '%$q%')
     AND DATE(email_queued_at) BETWEEN '$dtf' AND '$dtt'
     ORDER BY $sort $order LIMIT $record_from, $record_to"
 );
@@ -96,6 +96,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                     To <?php if ($sort == 'email_recipient') { echo $order_icon; } ?>
                                 </a>
                             </th>
+                            <th>Cc</th>
                             <th>
                                 <a class="text-dark" href="?<?= $url_query_strings_sort ?>&sort=email_subject&order=<?= $disp ?>">
                                     Subject <?php if ($sort == 'email_subject') { echo $order_icon; } ?>
@@ -123,10 +124,27 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             $email_from_name = escapeHtml($row['email_from_name']);
                             $email_recipient = escapeHtml($row['email_recipient']);
                             $email_recipient_name = escapeHtml($row['email_recipient_name']);
+                            $email_cc_addresses = [];
+                            $email_cc = json_decode($row['email_cc'] ?? '', true);
+                            if (is_array($email_cc)) {
+                                foreach ($email_cc as $cc) {
+                                    $cc_email = escapeHtml($cc['email'] ?? '');
+                                    if ($cc_email !== '') {
+                                        $email_cc_addresses[] = $cc_email;
+                                    }
+                                }
+                            }
                             $email_subject = escapeHtml($row['email_subject']);
                             $email_attempts = intval($row['email_attempts']);
                             $email_queued_at = escapeHtml($row['email_queued_at']);
                             $email_failed_at = escapeHtml($row['email_failed_at']);
+                            $email_failed_recipients = [];
+                            $email_failed_recipients_data = json_decode($row['email_failed_recipients'] ?? '', true);
+                            if (is_array($email_failed_recipients_data)) {
+                                foreach ($email_failed_recipients_data as $failed_recipient) {
+                                    $email_failed_recipients[] = escapeHtml($failed_recipient);
+                                }
+                            }
                             $email_sent_at = escapeHtml($row['email_sent_at']);
                             $email_status = intval($row['email_status']);
                             if ($email_status == 0) {
@@ -135,6 +153,9 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                 $email_status_display = "<div class='text-warning'>Sending</div>";
                             } elseif($email_status == 2) {
                                 $email_status_display = "<div class='text-danger'>Failed</div><small class='text-secondary text-monospace'>$email_failed_at</small>";
+                            } elseif($email_status == 4) {
+                                $failed_recipients_display = implode('<br>', $email_failed_recipients);
+                                $email_status_display = "<div class='text-warning'>Partially sent</div><small class='text-secondary text-monospace'>$email_sent_at</small><br><small class='text-danger'>Rejected:<br>$failed_recipients_display</small>";
                             } else {
                                 $email_status_display = "<div class='text-success'>Sent</div><small class='text-secondary text-monospace'>$email_sent_at</small>";
                             }
@@ -143,7 +164,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
                             <tr>
                                 <td class="pr-0 bg-light">
-                                    <?php if ($email_status !== 3) { ?>
+                                    <?php if ($email_status === 0 || $email_status === 2) { ?>
                                     <div class="form-check">
                                         <input class="form-check-input bulk-select" type="checkbox" name="email_ids[]" value="<?= $email_id ?>">
                                     </div>
@@ -152,6 +173,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                 <td class="text-monospace"><?= $email_queued_at ?></td>
                                 <td><?= "$email_from<br><small class='text-secondary'>$email_from_name</small>" ?></td>
                                 <td><?= "$email_recipient<br><small class='text-secondary'>$email_recipient_name</small>" ?></td>
+                                <td><?= $email_cc_addresses ? implode('<br>', $email_cc_addresses) : '<span class="text-secondary">—</span>' ?></td>
                                 <td><?= $email_subject ?></td>
                                 <td><?= $email_status_display ?></td>
                                 <td><?= $email_attempts ?></td>
@@ -167,8 +189,8 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                         <a class="btn btn-sm btn-success" href="post.php?send_failed_mail=<?= $email_id ?>&csrf_token=<?= $_SESSION['csrf_token'] ?>"><i class="fas fa-fw fa-paper-plane"></i></a>
                                     <?php } ?>
 
-                                    <!-- Allow cancelling a message if it hasn't yet been picked up (e.g. stuck/bugged) -->
-                                    <?php if ($email_status !== 3) { ?>
+                                    <!-- Only queued and failed messages can be cancelled safely. -->
+                                    <?php if ($email_status === 0 || $email_status === 2) { ?>
                                         <a class="btn btn-sm btn-danger confirm-link" href="post.php?cancel_mail=<?= $email_id ?>&csrf_token=<?= $_SESSION['csrf_token'] ?>"><i class="fas fa-fw fa-trash"></i></a>
                                     <?php } ?>
 

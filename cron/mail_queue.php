@@ -187,6 +187,7 @@ function sendQueueEmail(
     string $from_name,
     string $to_email,
     string $to_name,
+    string $cc_json,
     string $subject,
     string $html_body,
     string $ics_str,
@@ -270,9 +271,35 @@ function sendQueueEmail(
     // Recipients & content
     $mail->setFrom($from_email, $from_name);
     $mail->addAddress($to_email, $to_name);
+
+    if (!empty($cc_json)) {
+        $cc_recipients = json_decode($cc_json, true);
+        if (is_array($cc_recipients)) {
+            foreach ($cc_recipients as $cc) {
+                $cc_email = trim(strval($cc['email'] ?? ''));
+                $cc_name = strval($cc['name'] ?? '');
+                if (filter_var($cc_email, FILTER_VALIDATE_EMAIL)) {
+                    $mail->addCC($cc_email, $cc_name);
+                }
+            }
+        }
+    }
+
     $mail->isHTML(true);
     $mail->Subject = $subject;
     $mail->Body = $html_body;
+
+    // PHPMailer reports each SMTP RCPT TO result through this callback. If at
+    // least one recipient is accepted and another is rejected, DATA is still
+    // transmitted to the accepted recipients before send() throws. The caller
+    // must treat that as a terminal partial delivery rather than retrying the
+    // whole message and sending duplicates to the successful recipients.
+    $delivery_results = [];
+    $mail->action_function = static function ($is_sent, $to) use (&$delivery_results) {
+        foreach ($to as $recipient) {
+            $delivery_results[strtolower($recipient[0])] = (bool)$is_sent;
+        }
+    };
 
     if (!empty($ics_str)) {
         $mail->addStringAttachment($ics_str, 'Scheduled_ticket.ics', 'base64', 'text/calendar');
@@ -305,8 +332,31 @@ function sendQueueEmail(
         }
     }
 
-    $mail->send();
-    return true;
+    try {
+        $mail->send();
+    } catch (Exception $e) {
+        $accepted_recipients = array_keys(array_filter($delivery_results));
+        $failed_recipients = array_keys(array_filter($delivery_results, static function ($is_sent) {
+            return !$is_sent;
+        }));
+
+        if ($accepted_recipients && $failed_recipients) {
+            return [
+                'status' => 'partial',
+                'accepted_recipients' => $accepted_recipients,
+                'failed_recipients' => $failed_recipients,
+                'error' => $e->getMessage()
+            ];
+        }
+
+        throw $e;
+    }
+
+    return [
+        'status' => 'sent',
+        'accepted_recipients' => array_keys(array_filter($delivery_results)),
+        'failed_recipients' => []
+    ];
 }
 
 /** =======================================================================
@@ -332,7 +382,7 @@ if ($orphaned_emails > 0) {
 /** =======================================================================
  *  SEND: status = 0 (Queued)
  * ======================================================================= */
-$sql_queue = mysqli_query($mysqli, "SELECT email_attachments, email_cal_str, email_content, email_from, email_from_name, email_id,
+$sql_queue = mysqli_query($mysqli, "SELECT email_attachments, email_cal_str, email_cc, email_content, email_from, email_from_name, email_id,
     email_recipient, email_recipient_name, email_subject FROM email_queue WHERE email_status = 0 AND email_queued_at <= NOW()");
 
 if (mysqli_num_rows($sql_queue) > 0) {
@@ -344,6 +394,7 @@ if (mysqli_num_rows($sql_queue) > 0) {
         $email_recipient_name = $rowq['email_recipient_name'];
         $email_subject        = $rowq['email_subject'];
         $email_content        = $rowq['email_content'];
+        $email_cc             = $rowq['email_cc'];
         $email_ics_str        = $rowq['email_cal_str'];
         $email_attachments    = $rowq['email_attachments'];
 
@@ -385,7 +436,7 @@ if (mysqli_num_rows($sql_queue) > 0) {
         }
 
         try {
-            sendQueueEmail(
+            $delivery_result = sendQueueEmail(
                 ($config_smtp_provider ?: 'standard_smtp'),
                 $config_smtp_host,
                 (int)$config_smtp_port,
@@ -396,6 +447,7 @@ if (mysqli_num_rows($sql_queue) > 0) {
                 (string)$email_from_name,
                 (string)$email_recipient,
                 (string)$email_recipient_name,
+                (string)$email_cc,
                 (string)$email_subject,
                 (string)$email_content,
                 (string)$email_ics_str,
@@ -408,8 +460,22 @@ if (mysqli_num_rows($sql_queue) > 0) {
                 (string)$config_mail_oauth_access_token_expires_at
             );
 
+            if ($delivery_result['status'] === 'partial') {
+                $failed_recipients_json = mysqli_real_escape_string($mysqli, json_encode($delivery_result['failed_recipients']));
+                $failed_recipients_text = substr(implode(', ', $delivery_result['failed_recipients']), 0, 800);
+                $failed_recipients_notification = escapeSql($failed_recipients_text);
+                $err = substr("Mailer Error: " . $delivery_result['error'], 0, 100) . "...";
+
+                // Status 4 is terminal: some recipients already received the
+                // message, so retrying the complete To/Cc group would duplicate it.
+                mysqli_query($mysqli, "UPDATE email_queue SET email_status = 4, email_sent_at = NOW(), email_failed_at = NOW(), email_attempts = 1, email_failed_recipients = '$failed_recipients_json', email_content = '', email_cal_str = '', email_attachments = '' WHERE email_id = $email_id");
+                appNotify("Cron-Mail-Queue", "Email #$email_id was partially sent; rejected recipients: $failed_recipients_notification");
+                logApp("Cron-Mail-Queue", "warning", "Email #$email_id was partially sent. Rejected recipients: $failed_recipients_text. $err");
+                continue;
+            }
+
             // Scrub the body on delivery - it can carry share decryption keys and temporary passwords
-            mysqli_query($mysqli, "UPDATE email_queue SET email_status = 3, email_sent_at = NOW(), email_attempts = 1, email_content = '', email_cal_str = '', email_attachments = '' WHERE email_id = $email_id");
+            mysqli_query($mysqli, "UPDATE email_queue SET email_status = 3, email_sent_at = NOW(), email_attempts = 1, email_failed_recipients = NULL, email_content = '', email_cal_str = '', email_attachments = '' WHERE email_id = $email_id");
 
         } catch (Exception $e) {
             mysqli_query($mysqli, "UPDATE email_queue SET email_status = 2, email_failed_at = NOW(), email_attempts = 1 WHERE email_id = $email_id");
@@ -431,7 +497,7 @@ if (mysqli_num_rows($sql_queue) > 0) {
  */
 $sql_failed_queue = mysqli_query(
     $mysqli,
-    "SELECT email_attachments, email_attempts, email_cal_str, email_content, email_from,
+    "SELECT email_attachments, email_attempts, email_cal_str, email_cc, email_content, email_from,
         email_from_name, email_id, email_recipient, email_recipient_name, email_subject FROM email_queue
      WHERE email_status = 2
        AND email_attempts < 4
@@ -447,6 +513,7 @@ if (mysqli_num_rows($sql_failed_queue) > 0) {
         $email_recipient_name = $rowf['email_recipient_name'];
         $email_subject        = $rowf['email_subject'];
         $email_content        = $rowf['email_content'];
+        $email_cc             = $rowf['email_cc'];
         $email_ics_str        = $rowf['email_cal_str'];
         $email_attachments    = $rowf['email_attachments'];
         $email_attempts       = (int)$rowf['email_attempts'] + 1;
@@ -463,7 +530,7 @@ if (mysqli_num_rows($sql_failed_queue) > 0) {
         }
 
         try {
-            sendQueueEmail(
+            $delivery_result = sendQueueEmail(
                 ($config_smtp_provider ?: 'standard_smtp'),
                 $config_smtp_host,
                 (int)$config_smtp_port,
@@ -474,6 +541,7 @@ if (mysqli_num_rows($sql_failed_queue) > 0) {
                 (string)$email_from_name,
                 (string)$email_recipient,
                 (string)$email_recipient_name,
+                (string)$email_cc,
                 (string)$email_subject,
                 (string)$email_content,
                 (string)$email_ics_str,
@@ -486,8 +554,20 @@ if (mysqli_num_rows($sql_failed_queue) > 0) {
                 (string)$config_mail_oauth_access_token_expires_at
             );
 
+            if ($delivery_result['status'] === 'partial') {
+                $failed_recipients_json = mysqli_real_escape_string($mysqli, json_encode($delivery_result['failed_recipients']));
+                $failed_recipients_text = substr(implode(', ', $delivery_result['failed_recipients']), 0, 800);
+                $failed_recipients_notification = escapeSql($failed_recipients_text);
+                $err = substr("Mailer Error: " . $delivery_result['error'], 0, 100) . "...";
+
+                mysqli_query($mysqli, "UPDATE email_queue SET email_status = 4, email_sent_at = NOW(), email_failed_at = NOW(), email_attempts = $email_attempts, email_failed_recipients = '$failed_recipients_json', email_content = '', email_cal_str = '', email_attachments = '' WHERE email_id = $email_id");
+                appNotify("Cron-Mail-Queue", "Email #$email_id was partially sent; rejected recipients: $failed_recipients_notification");
+                logApp("Cron-Mail-Queue", "warning", "Email #$email_id was partially sent on retry. Rejected recipients: $failed_recipients_text. $err");
+                continue;
+            }
+
             // Scrub the body on delivery - it can carry share decryption keys and temporary passwords
-            mysqli_query($mysqli, "UPDATE email_queue SET email_status = 3, email_sent_at = NOW(), email_attempts = $email_attempts, email_content = '', email_cal_str = '', email_attachments = '' WHERE email_id = $email_id");
+            mysqli_query($mysqli, "UPDATE email_queue SET email_status = 3, email_sent_at = NOW(), email_attempts = $email_attempts, email_failed_recipients = NULL, email_content = '', email_cal_str = '', email_attachments = '' WHERE email_id = $email_id");
 
         } catch (Exception $e) {
             mysqli_query($mysqli, "UPDATE email_queue SET email_status = 2, email_failed_at = NOW(), email_attempts = $email_attempts WHERE email_id = $email_id");

@@ -70,7 +70,7 @@ $max_inline_embed_bytes = 2097152; // 2 MB - larger inline images are saved as r
 /** ------------------------------------------------------------------
  * Ticket / Reply helpers (unchanged)
  * ------------------------------------------------------------------ */
-function addTicket($contact_id, $contact_name, $contact_email, $client_id, $date, $subject, $message, $attachments, $original_message_file, $ccs) {
+function addTicket($contact_id, $contact_name, $contact_email, $client_id, $date, $subject, $message, $attachments, $original_message_file, $ccs, $contact_watcher_name = '') {
     global $mysqli, $config_app_name, $company_phone, $config_ticket_prefix, $config_ticket_client_general_notifications, $config_ticket_new_ticket_notification_email, $config_base_url, $config_ticket_from_name, $config_ticket_from_email, $config_ticket_default_billable, $allowed_extensions;
     $bad_pattern = "/do[\W_]*not[\W_]*reply|no[\W_]*reply/i"; // Email addresses to ignore
 
@@ -146,14 +146,15 @@ function addTicket($contact_id, $contact_name, $contact_email, $client_id, $date
 
     // Add unknown guests as ticket watcher
     if ($client_id == 0 && !preg_match($bad_pattern, $contact_email_esc)) {
-        mysqli_query($mysqli, "INSERT INTO ticket_watchers SET watcher_email = '$contact_email_esc', watcher_ticket_id = $id");
+        saveTicketWatcher($id, $contact_email, $contact_watcher_name);
     }
 
-    // Add CCs as ticket watchers
+    // Add the other To/Cc recipients as ticket watchers.
     foreach ($ccs as $cc) {
-        if (filter_var($cc, FILTER_VALIDATE_EMAIL) && !preg_match($bad_pattern, $cc)) {
-            $cc_esc = mysqli_real_escape_string($mysqli, $cc);
-            mysqli_query($mysqli, "INSERT INTO ticket_watchers SET watcher_email = '$cc_esc', watcher_ticket_id = $id");
+        $cc_email = is_array($cc) ? strval($cc['email'] ?? '') : strval($cc);
+        $cc_name = is_array($cc) ? strval($cc['name'] ?? '') : '';
+        if (filter_var($cc_email, FILTER_VALIDATE_EMAIL) && !preg_match($bad_pattern, $cc_email)) {
+            saveTicketWatcher($id, $cc_email, $cc_name);
         }
     }
 
@@ -168,6 +169,7 @@ function addTicket($contact_id, $contact_name, $contact_email, $client_id, $date
             'from_name' => $config_ticket_from_name,
             'recipient' => $contact_email,
             'recipient_name' => $contact_name,
+            'cc' => getTicketWatcherCc($id, $contact_email),
             'subject' => $subject_email,
             'body' => mysqli_real_escape_string($mysqli, $body)
         ];
@@ -203,8 +205,8 @@ function addTicket($contact_id, $contact_name, $contact_email, $client_id, $date
     return true;
 }
 
-function addReply($from_email, $date, $subject, $ticket_number, $message, $attachments) {
-    global $mysqli, $config_app_name, $company_phone, $config_ticket_prefix, $config_base_url, $config_ticket_from_name, $config_ticket_from_email, $allowed_extensions;
+function addReply($from_email, $from_name, $date, $subject, $ticket_number, $message, $attachments, $message_recipients = []) {
+    global $mysqli, $config_app_name, $company_phone, $config_ticket_prefix, $config_base_url, $config_ticket_from_name, $config_ticket_from_email, $config_imap_username, $allowed_extensions;
 
     $ticket_reply_type = 'Client';
     // $message contains the raw HTML body from IMAP
@@ -287,16 +289,68 @@ function addReply($from_email, $date, $subject, $ticket_number, $message, $attac
             return true;
         }
 
-        if (empty($ticket_contact_email) || $ticket_contact_email !== $from_email) {
+        $sender_authorized = !empty($ticket_contact_email) && strcasecmp($ticket_contact_email, $from_email) === 0;
+        $sender_is_participant = $sender_authorized;
+        $row2 = null;
+
+        if (!$sender_authorized) {
             $from_email_esc2 = mysqli_real_escape_string($mysqli, $from_email);
+            $watcher = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT watcher_id FROM ticket_watchers WHERE watcher_ticket_id = $ticket_id AND watcher_email = '$from_email_esc2' LIMIT 1"));
             $row2 = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT contact_id FROM contacts WHERE contact_email = '$from_email_esc2' AND contact_client_id = $client_id LIMIT 1"));
-            if ($row2) {
+
+            if ($watcher) {
+                // Watchers are explicit ticket participants even when they do
+                // not have a contact record in this client.
+                $sender_authorized = true;
+                $sender_is_participant = true;
+                saveTicketWatcher($ticket_id, $from_email, $from_name);
+            }
+
+            if (!empty($row2)) {
+                // Preserve the contact identity even when the sender is also a
+                // watcher, so ticket_reply_by points at the actual contact.
+                $sender_authorized = true;
                 $ticket_reply_contact = intval($row2['contact_id']);
+            } elseif ($sender_authorized) {
+                $ticket_reply_contact = 0;
             } else {
                 $ticket_reply_type = 'Internal';
                 $ticket_reply_contact = '0';
                 $message = "<b>WARNING: Contact email mismatch</b><br>$message";
                 $message_esc = mysqli_real_escape_string($mysqli, $message);
+            }
+        }
+
+        // An authorized participant may extend the conversation by putting
+        // additional people in To or Cc. Add those addresses as watchers before
+        // subsequent ticket messages are generated. Never add the sender, the
+        // primary ticket contact, or either configured helpdesk mailbox.
+        if ($sender_is_participant && is_array($message_recipients)) {
+            $excluded_addresses = array_filter([
+                strtolower(trim($from_email)),
+                strtolower(trim($ticket_contact_email)),
+                strtolower(trim(strval($config_ticket_from_email))),
+                strtolower(trim(strval($config_imap_username ?? '')))
+            ]);
+            $bad_pattern = "/do[\W_]*not[\W_]*reply|no[\W_]*reply/i";
+
+            foreach ($message_recipients as $participant) {
+                $participant_email = is_array($participant) ? strval($participant['email'] ?? '') : strval($participant);
+                $participant_name = is_array($participant) ? strval($participant['name'] ?? '') : '';
+                $participant_email = strtolower(trim($participant_email));
+                if (!filter_var($participant_email, FILTER_VALIDATE_EMAIL)
+                    || in_array($participant_email, $excluded_addresses, true)
+                    || preg_match($bad_pattern, $participant_email)
+                ) {
+                    continue;
+                }
+
+                $watcher = saveTicketWatcher($ticket_id, $participant_email, $participant_name);
+                if (!empty($watcher['inserted'])) {
+                    $participant_email_esc = mysqli_real_escape_string($mysqli, $participant_email);
+                    logTicketHistory($ticket_id, "$from_email_esc added $participant_email_esc as a watcher by email");
+                    logAudit("Ticket", "Edit", "Email parser: $from_email_esc added $participant_email_esc as a watcher", $client_id, $ticket_id);
+                }
             }
         }
 
@@ -665,7 +719,8 @@ foreach ($messages as $message) {
         // From
         $from_addr  = $message->from(); // ?Address
         $from_email = escapeSql($from_addr?->email() ?: 'itflow-guest@example.com');
-        $from_name  = escapeSql($from_addr?->name() ?: 'Unknown');
+        $from_name_raw = trim(strval($from_addr?->name() ?: ''));
+        $from_name  = escapeSql($from_name_raw ?: 'Unknown');
 
         $from_domain = explode("@", $from_email);
         $from_domain = escapeSql(end($from_domain));
@@ -691,14 +746,33 @@ foreach ($messages as $message) {
         $raw_message = (string)$message; // head + body, CRLF separated
         file_put_contents("../uploads/tmp/{$original_message_file}", $raw_message);
 
-        // CC (deduplicated, excluding the sender)
-        $ccs = array();
-        foreach ($message->cc() as $cc_addr) {
-            $cc_mail = strtolower($cc_addr->email());
-            if ($cc_mail && $cc_mail !== strtolower($from_email) && !in_array($cc_mail, $ccs)) {
-                $ccs[] = $cc_mail;
+        // Other To/Cc recipients become collaborators when an authorized
+        // participant creates or replies to a ticket. Exclude the sender and
+        // both possible helpdesk mailbox addresses.
+        $message_recipients = [];
+        $message_recipient_emails = [];
+        $excluded_recipients = array_filter([
+            strtolower($from_email),
+            strtolower(trim(strval($config_ticket_from_email))),
+            strtolower(trim(strval($config_imap_username)))
+        ]);
+        foreach ([$message->to(), $message->cc()] as $address_list) {
+            foreach ($address_list as $address) {
+                $recipient_email = strtolower(trim(strval($address->email() ?? '')));
+                $recipient_name = trim(strval($address->name() ?? ''));
+                if ($recipient_email
+                    && !in_array($recipient_email, $excluded_recipients, true)
+                    && !isset($message_recipient_emails[$recipient_email])
+                ) {
+                    $message_recipient_emails[$recipient_email] = true;
+                    $message_recipients[] = [
+                        'email' => $recipient_email,
+                        'name' => $recipient_name
+                    ];
+                }
             }
         }
+        $ccs = $message_recipients;
 
         // Date (string)
         $dateObj = $message->date(); // ?CarbonInterface
@@ -750,7 +824,7 @@ foreach ($messages as $message) {
         // 1. Reply to existing ticket with the number in subject
         if (preg_match("/\[" . preg_quote($config_ticket_prefix, '/') . "(\d+)\]/", $subject, $ticket_number_matches)) {
             $ticket_number = intval($ticket_number_matches[1]);
-            $email_processed = addReply($from_email, $date, $subject, $ticket_number, $message_body, $attachments);
+            $email_processed = addReply($from_email, $from_name_raw, $date, $subject, $ticket_number, $message_body, $attachments, $message_recipients);
         }
 
         // 2. Fuzzy duplicate check using a known contact/domain and similar_text subject
@@ -795,7 +869,7 @@ foreach ($messages as $message) {
 
                     if ($percent >= 95) {
                         // Treat as a reply/duplicate
-                        $email_processed = addReply($from_email, $date, $subject, $ticket_number, $message_body, $attachments);
+                        $email_processed = addReply($from_email, $from_name_raw, $date, $subject, $ticket_number, $message_body, $attachments, $message_recipients);
                         break;
                     }
                 }
@@ -845,7 +919,7 @@ foreach ($messages as $message) {
 
             $bad_from_pattern = "/daemon|postmaster|bounce|mta/i"; //  Stop NDRs with bad subjects raising new tickets
             if (!preg_match($bad_from_pattern, $from_email)) {
-                $email_processed = addTicket(0, $from_name, $from_email, 0, $date, $subject, $message_body, $attachments, $original_message_file, $ccs);
+                $email_processed = addTicket(0, $from_name, $from_email, 0, $date, $subject, $message_body, $attachments, $original_message_file, $ccs, $from_name_raw);
 
             } else {
 
@@ -929,6 +1003,7 @@ foreach ($messages as $message) {
                     // No attachments
                     addReply(
                         $from_email,
+                        $from_name_raw,
                         $date,
                         $original_subject,
                         $ticket_number,

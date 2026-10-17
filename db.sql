@@ -1234,6 +1234,8 @@ CREATE TABLE `email_queue` (
   `email_from_name` varchar(255) NOT NULL,
   `email_subject` varchar(255) NOT NULL,
   `email_content` longtext NOT NULL,
+  `email_cc` text DEFAULT NULL,
+  `email_failed_recipients` text DEFAULT NULL,
   `email_cal_str` varchar(1024) DEFAULT NULL,
   `email_attachments` text DEFAULT NULL,
   `email_queued_at` datetime NOT NULL DEFAULT current_timestamp(),

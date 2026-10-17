@@ -295,7 +295,7 @@ if (isset($_GET['ticket_id'])) {
         }
 
         // Get Watchers
-        $sql_ticket_watchers = mysqli_query($mysqli, "SELECT watcher_email, watcher_id FROM ticket_watchers WHERE watcher_ticket_id = $ticket_id ORDER BY watcher_email DESC");
+        $sql_ticket_watchers = mysqli_query($mysqli, "SELECT watcher_email, watcher_id, watcher_name FROM ticket_watchers WHERE watcher_ticket_id = $ticket_id ORDER BY watcher_email DESC");
         $watcher_count = mysqli_num_rows($sql_ticket_watchers);
 
         // Get Additional Assets
@@ -1274,10 +1274,16 @@ if (isset($_GET['ticket_id'])) {
                                 <div class="text-secondary small text-uppercase <?= ($asset_id || $vendor_id || $project_id) ? 'mt-3 pt-2 border-top' : '' ?>">Watchers</div>
                                 <?php while ($watcher_row = mysqli_fetch_assoc($sql_ticket_watchers)) {
                                     $watcher_id = intval($watcher_row['watcher_id']);
+                                    $ticket_watcher_name = escapeHtml($watcher_row['watcher_name']);
                                     $ticket_watcher_email = escapeHtml($watcher_row['watcher_email']);
                                     ?>
                                     <div class="mt-1 text-truncate">
-                                        <i class="fa fa-fw fa-envelope text-secondary mr-2"></i><?= $ticket_watcher_email ?>
+                                        <i class="fa fa-fw fa-envelope text-secondary mr-2"></i>
+                                        <?php if ($ticket_watcher_name) { ?>
+                                            <strong><?= $ticket_watcher_name ?></strong> &lt;<?= $ticket_watcher_email ?>&gt;
+                                        <?php } else { ?>
+                                            <?= $ticket_watcher_email ?>
+                                        <?php } ?>
                                         <?php if (!$ticket_is_closed) { ?>
                                             <a class="confirm-link float-right" href="post.php?delete_ticket_watcher=<?= $watcher_id ?>&csrf_token=<?= $_SESSION['csrf_token'] ?>">
                                                 <i class="fas fa-fw fa-times text-secondary"></i>

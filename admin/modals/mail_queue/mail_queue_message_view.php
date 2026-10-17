@@ -12,7 +12,7 @@ $purifier_config->set('Cache.DefinitionImpl', null); // Disable cache by setting
 $purifier_config->set('URI.AllowedSchemes', ['data' => true, 'src' => true, 'http' => true, 'https' => true]);
 $purifier = new HTMLPurifier($purifier_config);
 
-$sql = mysqli_query($mysqli, "SELECT email_attempts, email_content, email_failed_at, email_from, email_from_name,
+$sql = mysqli_query($mysqli, "SELECT email_attempts, email_cc, email_content, email_failed_at, email_failed_recipients, email_from, email_from_name,
     email_queued_at, email_recipient, email_recipient_name, email_sent_at, email_status,
     email_subject FROM email_queue WHERE email_id = $email_id LIMIT 1");
 $row = mysqli_fetch_assoc($sql);
@@ -21,11 +21,29 @@ $email_from = escapeHtml($row['email_from']);
 $email_from_name = escapeHtml($row['email_from_name']);
 $email_recipient = escapeHtml($row['email_recipient']);
 $email_recipient_name = escapeHtml($row['email_recipient_name']);
+$email_cc = [];
+$email_cc_data = json_decode($row['email_cc'] ?? '', true);
+if (is_array($email_cc_data)) {
+    foreach ($email_cc_data as $cc) {
+        $cc_email = escapeHtml($cc['email'] ?? '');
+        $cc_name = escapeHtml($cc['name'] ?? '');
+        if ($cc_email !== '') {
+            $email_cc[] = $cc_name !== '' ? "<strong>$cc_name</strong> ($cc_email)" : $cc_email;
+        }
+    }
+}
 $email_subject = escapeHtml($row['email_subject']);
 $email_content = $purifier->purify($row['email_content']);
 $email_attempts = intval($row['email_attempts']);
 $email_queued_at = escapeHtml($row['email_queued_at']);
 $email_failed_at = escapeHtml($row['email_failed_at']);
+$email_failed_recipients = [];
+$email_failed_recipients_data = json_decode($row['email_failed_recipients'] ?? '', true);
+if (is_array($email_failed_recipients_data)) {
+    foreach ($email_failed_recipients_data as $failed_recipient) {
+        $email_failed_recipients[] = escapeHtml($failed_recipient);
+    }
+}
 $email_sent_at = escapeHtml($row['email_sent_at']);
 $email_status = intval($row['email_status']);
 if ($email_status == 0) {
@@ -34,6 +52,8 @@ if ($email_status == 0) {
     $email_status_display = "<div class='text-warning'>Sending</div>";
 } elseif($email_status == 2) {
     $email_status_display = "<div class='text-danger'>Failed</div><small class='text-secondary'>$email_failed_at</small>";
+} elseif($email_status == 4) {
+    $email_status_display = "<div class='text-warning'>Partially sent</div><small class='text-secondary'>$email_sent_at</small>";
 } else {
     $email_status_display = "<div class='text-success'>Sent</div><small class='text-secondary'>$email_sent_at</small>";
 }
@@ -59,15 +79,46 @@ ob_start();
     <hr class="my-2">
     <div class="row">
         <div class="col-md-1">
+            <span class="text-secondary">Status:</span>
+        </div>
+        <div class="col-md-10">
+            <?= $email_status_display ?>
+        </div>
+    </div>
+    <hr class="my-2">
+    <div class="row">
+        <div class="col-md-1">
             <span class="text-secondary">To:</span>
         </div>
         <div class="col-md-10">
             <?= "<strong>$email_recipient_name</strong> ($email_recipient)" ?>
         </div>
     </div>
+    <?php if ($email_cc) { ?>
+        <hr class="my-2">
+        <div class="row">
+            <div class="col-md-1">
+                <span class="text-secondary">Cc:</span>
+            </div>
+            <div class="col-md-10">
+                <?= implode('<br>', $email_cc) ?>
+            </div>
+        </div>
+    <?php } ?>
+    <?php if ($email_failed_recipients) { ?>
+        <hr class="my-2">
+        <div class="row">
+            <div class="col-md-1">
+                <span class="text-danger">Rejected:</span>
+            </div>
+            <div class="col-md-10 text-danger">
+                <?= implode('<br>', $email_failed_recipients) ?>
+            </div>
+        </div>
+    <?php } ?>
     <hr class="my-2">
     <div class="prettyContent">
-        <?php if ($email_status == 3 && $email_content === '') { ?>
+        <?php if (($email_status == 3 || $email_status == 4) && $email_content === '') { ?>
             <em class="text-secondary">Message content was cleared on delivery.</em>
         <?php } else { echo $email_content; } ?>
     </div>

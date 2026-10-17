@@ -198,7 +198,13 @@
                     }
 
                     if (watchersDropdown && contact.contact_email) {
-                        watchersDropdown[watchersDropdown.length] = new Option(contact.contact_email, contact.contact_email);
+                        const watcherLabel = contact.contact_name
+                            ? contact.contact_name + " - " + contact.contact_email
+                            : contact.contact_email;
+                        watchersDropdown[watchersDropdown.length] = new Option(
+                            watcherLabel,
+                            contact.contact_email
+                        );
                     }
                 });
 

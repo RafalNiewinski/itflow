@@ -382,6 +382,41 @@ function addToMailQueue($data) {
         $subject = strval($email['subject']);
         $body = strval($email['body']);
 
+        // Keep the existing single primary recipient fields for backwards
+        // compatibility, and store optional CC recipients as a compact JSON
+        // manifest. This lets one queue row become one SMTP message whose
+        // participants can see and reply-all to each other.
+        $cc_recipients = [];
+        $cc_seen = [strtolower(trim($recipient)) => true];
+        if (!empty($email['cc']) && is_array($email['cc'])) {
+            foreach ($email['cc'] as $cc) {
+                if (is_string($cc)) {
+                    $cc_email = trim($cc);
+                    $cc_name = '';
+                } elseif (is_array($cc)) {
+                    $cc_email = trim(strval($cc['email'] ?? ''));
+                    $cc_name = strval($cc['name'] ?? '');
+                } else {
+                    continue;
+                }
+
+                $cc_key = strtolower($cc_email);
+                if (!filter_var($cc_email, FILTER_VALIDATE_EMAIL) || isset($cc_seen[$cc_key])) {
+                    continue;
+                }
+
+                $cc_seen[$cc_key] = true;
+                $cc_recipients[] = [
+                    'email' => $cc_email,
+                    'name' => $cc_name
+                ];
+            }
+        }
+        $cc_json = '';
+        if ($cc_recipients) {
+            $cc_json = mysqli_real_escape_string($mysqli, json_encode($cc_recipients));
+        }
+
         $cal_str = '';
         if (isset($email['cal_str'])) {
             $cal_str = mysqli_escape_string($mysqli, $email['cal_str']);
@@ -415,10 +450,139 @@ function addToMailQueue($data) {
             $queued_at = 'CURRENT_TIMESTAMP()';
         }
 
-        mysqli_query($mysqli, "INSERT INTO email_queue SET email_recipient = '$recipient', email_recipient_name = '$recipient_name', email_from = '$from', email_from_name = '$from_name', email_subject = '$subject', email_content = '$body', email_queued_at = $queued_at, email_cal_str = '$cal_str', email_attachments = '$attachments'");
+        mysqli_query($mysqli, "INSERT INTO email_queue SET email_recipient = '$recipient', email_recipient_name = '$recipient_name', email_cc = '$cc_json', email_from = '$from', email_from_name = '$from_name', email_subject = '$subject', email_content = '$body', email_queued_at = $queued_at, email_cal_str = '$cal_str', email_attachments = '$attachments'");
     }
 
     return true;
+}
+
+function saveTicketWatcher($ticket_id, $watcher_email, $fallback_name = '') {
+
+    global $mysqli;
+
+    $ticket_id = intval($ticket_id);
+    $watcher_email = trim(strval($watcher_email));
+    $fallback_name = preg_replace('/[\r\n]+/', ' ', trim(strip_tags(strval($fallback_name))));
+
+    if (!$ticket_id || !filter_var($watcher_email, FILTER_VALIDATE_EMAIL)) {
+        return null;
+    }
+
+    $watcher_email_esc = mysqli_real_escape_string($mysqli, $watcher_email);
+    $watcher_name = mb_substr($fallback_name, 0, 255);
+    $name_is_from_contact = false;
+
+    // A contact belonging to the ticket's client is more authoritative than a
+    // display name supplied in an email header.
+    $contact_sql = mysqli_query(
+        $mysqli,
+        "SELECT contact_name
+         FROM contacts
+         LEFT JOIN tickets ON ticket_client_id = contact_client_id
+         WHERE ticket_id = $ticket_id
+           AND contact_email = '$watcher_email_esc'
+         ORDER BY contact_archived_at IS NULL DESC, contact_id DESC
+         LIMIT 1"
+    );
+    $contact = mysqli_fetch_assoc($contact_sql);
+    if (!empty($contact['contact_name'])) {
+        $contact_name = preg_replace('/[\r\n]+/', ' ', trim(strip_tags($contact['contact_name'])));
+        $watcher_name = mb_substr($contact_name, 0, 255);
+        $name_is_from_contact = true;
+    }
+
+    $existing_sql = mysqli_query(
+        $mysqli,
+        "SELECT watcher_id, watcher_name
+         FROM ticket_watchers
+         WHERE watcher_ticket_id = $ticket_id
+           AND watcher_email = '$watcher_email_esc'
+         LIMIT 1"
+    );
+    $existing = mysqli_fetch_assoc($existing_sql);
+
+    $watcher_name_esc = mysqli_real_escape_string($mysqli, $watcher_name);
+    if ($existing) {
+        $existing_name = trim(strval($existing['watcher_name']));
+        if ($watcher_name !== '' && ($existing_name === '' || $name_is_from_contact)) {
+            $watcher_id = intval($existing['watcher_id']);
+            mysqli_query($mysqli, "UPDATE ticket_watchers SET watcher_name = '$watcher_name_esc' WHERE watcher_id = $watcher_id");
+            $existing_name = $watcher_name;
+        }
+
+        return [
+            'inserted' => false,
+            'email' => $watcher_email,
+            'name' => $existing_name
+        ];
+    }
+
+    $watcher_name_sql = $watcher_name === '' ? 'NULL' : "'$watcher_name_esc'";
+    mysqli_query(
+        $mysqli,
+        "INSERT INTO ticket_watchers SET watcher_name = $watcher_name_sql, watcher_email = '$watcher_email_esc', watcher_ticket_id = $ticket_id"
+    );
+
+    return [
+        'inserted' => true,
+        'email' => $watcher_email,
+        'name' => $watcher_name
+    ];
+}
+
+function getTicketWatcherCc($ticket_id, $exclude_email = '') {
+
+    global $mysqli;
+
+    $ticket_id = intval($ticket_id);
+    $exclude_email = strtolower(trim(strval($exclude_email)));
+    $cc = [];
+    $seen = [];
+
+    $sql_watchers = mysqli_query($mysqli, "SELECT watcher_email, watcher_name FROM ticket_watchers WHERE watcher_ticket_id = $ticket_id");
+    while ($row = mysqli_fetch_assoc($sql_watchers)) {
+        $watcher_email = trim($row['watcher_email']);
+        $watcher_key = strtolower($watcher_email);
+
+        if (!filter_var($watcher_email, FILTER_VALIDATE_EMAIL)
+            || $watcher_key === $exclude_email
+            || isset($seen[$watcher_key])
+        ) {
+            continue;
+        }
+
+        $seen[$watcher_key] = true;
+        $cc[] = [
+            'email' => $watcher_email,
+            'name' => strval($row['watcher_name'] ?? '')
+        ];
+    }
+
+    return $cc;
+}
+
+function addTicketMailToQueue($ticket_id, $email) {
+
+    $recipient = trim(strval($email['recipient'] ?? ''));
+    $watchers = getTicketWatcherCc($ticket_id, $recipient);
+
+    // Tickets without a usable primary contact could previously still notify
+    // their watchers. Preserve that behaviour by promoting the first watcher
+    // to To and keeping the remaining watchers in Cc.
+    if (!filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+        if (!$watchers) {
+            return false;
+        }
+
+        $primary = array_shift($watchers);
+        $email['recipient'] = escapeSql($primary['email']);
+        $email['recipient_name'] = escapeSql($primary['name'] ?: $primary['email']);
+    }
+
+    $existing_cc = !empty($email['cc']) && is_array($email['cc']) ? $email['cc'] : [];
+    $email['cc'] = array_merge($existing_cc, $watchers);
+
+    return addToMailQueue([$email]);
 }
 
 function getTicketCalendarUid($ticket_id) {
