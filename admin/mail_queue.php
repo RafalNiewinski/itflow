@@ -19,46 +19,44 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
 ?>
 
-    <div class="card card-dark">
-        <div class="card-header py-3">
-            <h3 class="card-title"><i class="fas fa-fw fa-inbox mr-2"></i>Email Queue</h3>
+    <div class="card">
+        <div class="card-header bg-dark py-2">
+            <h3 class="card-title"><i class="fas fa-fw fa-inbox me-2"></i>Email Queue</h3>
         </div>
-        <div class="card-body">
-            <form class="mb-4" autocomplete="off">
-                <div class="row">
+        <div class="card-header py-3">
+            <form autocomplete="off">
+                <div class="row g-2 align-items-end">
                     <div class="col-sm-4">
                         <div class="input-group">
                             <input type="search" class="form-control" name="q" value="<?php if (isset($q)) { echo stripslashes(escapeHtml($q)); } ?>" placeholder="Search mail queue">
-                            <div class="input-group-append">
-                                <button class="btn btn-secondary" type="button" data-toggle="collapse" data-target="#advancedFilter"><i class="fas fa-filter"></i></button>
+                                <button class="btn btn-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#advancedFilter"><i class="fas fa-filter"></i></button>
                                 <button class="btn btn-primary"><i class="fa fa-search"></i></button>
-                            </div>
                         </div>
                     </div>
                     <div class="col-sm-8">
-                        <div class="dropdown float-right" id="bulkActionButton" hidden>
-                            <button class="btn btn-secondary dropdown-toggle" type="button" data-toggle="dropdown">
-                                <i class="fas fa-fw fa-layer-group mr-2"></i>Bulk Action (<span id="selectedCount">0</span>)
+                        <div class="dropdown float-end" id="bulkActionButton" hidden>
+                            <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-fw fa-layer-group me-2"></i>Bulk Action (<span id="selectedCount">0</span>)
                             </button>
                             <div class="dropdown-menu">
                                 <button class="dropdown-item"
                                         type="submit" form="bulkActions" name="bulk_cancel_emails">
-                                    <i class="fas fa-fw fa-ban mr-2"></i>Cancel
+                                    <i class="fas fa-fw fa-ban me-2"></i>Cancel
                                 </button>
                                 <div class="dropdown-divider"></div>
                                 <button class="dropdown-item text-danger text-bold"
                                         type="submit" form="bulkActions" name="bulk_delete_emails">
-                                    <i class="fas fa-fw fa-trash mr-2"></i>Delete
+                                    <i class="fas fa-fw fa-trash me-2"></i>Delete
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="collapse mt-3 <?php if (isset($_GET['dtf']) && $_GET['dtf'] !== '1970-01-01') { echo "show"; } ?>" id="advancedFilter">
-                    <div class="row">
+                <div class="collapse mt-3 <?php if (isset($_GET['dtf']) && $_GET['dtf'] !== '1970-01-01') { echo"show"; } ?>" id="advancedFilter">
+                    <div class="row g-3">
                         <div class="col-md-3">
-                            <div class="form-group">
-                                <label>Date range</label>
+                            <div>
+                                <label class="form-label">Date range</label>
                                 <input type="text" id="dateFilter" class="form-control" autocomplete="off">
                                 <input type="hidden" name="canned_date" id="canned_date" value="<?= escapeHtml($_GET['canned_date']) ?? '' ?>">
                                 <input type="hidden" name="dtf" id="dtf" value="<?= escapeHtml($dtf ?? '') ?>">
@@ -68,9 +66,9 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                     </div>
                 </div>
             </form>
-            <hr>
-            <form id="bulkActions" action="post.php" method="post">
-                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+        </div>
+        <form id="bulkActions" action="post.php" method="post">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
 
                 <div class="table-responsive-sm">
                     <table class="table table-sm table-striped table-borderless table-hover">
@@ -163,14 +161,14 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             ?>
 
                             <tr>
-                                <td class="pr-0 bg-light">
+                                <td class="checkbox-column bg-light border-end">
                                     <?php if ($email_status === 0 || $email_status === 2) { ?>
                                     <div class="form-check">
                                         <input class="form-check-input bulk-select" type="checkbox" name="email_ids[]" value="<?= $email_id ?>">
                                     </div>
                                     <?php } ?>
                                 </td>
-                                <td class="text-monospace"><?= $email_queued_at ?></td>
+                                <td class="font-monospace"><?= $email_queued_at ?></td>
                                 <td><?= "$email_from<br><small class='text-secondary'>$email_from_name</small>" ?></td>
                                 <td><?= "$email_recipient<br><small class='text-secondary'>$email_recipient_name</small>" ?></td>
                                 <td><?= $email_cc_addresses ? implode('<br>', $email_cc_addresses) : '<span class="text-secondary">—</span>' ?></td>
@@ -199,15 +197,15 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
                             <?php
                         }
+
                         ?>
 
-                        </tbody>
-                    </table>
-                </div>
-            </form>
+                    </tbody>
+                </table>
+            </div>
+        </form>
 
-            <?php require_once "../includes/filter_footer.php"; ?>
-        </div>
+        <?php require_once "../includes/filter_footer.php"; ?>
     </div>
 
 <script src="../js/bulk_actions.js"></script>

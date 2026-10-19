@@ -30,7 +30,20 @@ function truncate($text, $chars) {
 }
 
 
-function formatPhoneNumber($phoneNumber, $country_code = '', $show_country_code = false) {
+/**
+ * A number for reading.
+ *
+ * $show_country_code defaults to TRUE: a phone number on screen, in a PDF, in
+ * an email or in an export is being read by a human who may need to dial it,
+ * and a bare national number is ambiguous the moment a client is abroad. The
+ * dial code is only prepended when one is actually stored, so records without
+ * one look exactly as they did.
+ *
+ * Pass false where the output feeds a form INPUT - intl-tel-input runs in
+ * separateDialCode mode, so its dropdown owns the code and the field must hold
+ * the national number alone. Those are the only call sites that should.
+ */
+function formatPhoneNumber($phoneNumber, $country_code = '', $show_country_code = true) {
     // Remove all non-digit characters
     $digits = preg_replace('/\D/', '', $phoneNumber ?? '');
     $formatted = '';
@@ -209,6 +222,34 @@ function formatAddress($address, $city, $state, $zip, $country = '', $separator 
 
     // Empty parts drop out entirely rather than leaving stray separators
     return implode($separator, array_filter([$address, $region, $country], 'strlen'));
+}
+
+
+/**
+ * The agent a ticket is assigned to, as a pill: their avatar (or their initials
+ * on a grey circle) then their name. Unassigned keeps the same shape with a
+ * user-slash circle - red while the ticket still needs someone, muted once it
+ * doesn't. Takes the RAW user columns and escapes them itself.
+ * Bootstrap 5.3 utilities and Font Awesome only - no custom CSS.
+ */
+function formatAssignee($user_id, $user_name, $user_avatar, $highlight_unassigned = true) {
+    $pill = "badge rounded-pill d-inline-flex align-items-center align-middle gap-1 p-1 pe-2";
+    $user_id = intval($user_id);
+
+    if (!$user_id) {
+        $tone = $highlight_unassigned ? 'danger' : 'secondary';
+        $colors = $highlight_unassigned ? 'text-danger-emphasis bg-danger-subtle' : 'text-body-secondary bg-body-secondary';
+        return "<span class='$pill $colors'><span class='position-relative d-inline-flex' aria-hidden='true'><i class='fas fa-circle fs-5 text-$tone'></i><i class='fas fa-user-slash position-absolute top-50 start-50 translate-middle small text-white'></i></span>Unassigned</span>";
+    }
+
+    $user_avatar = escapeHtml($user_avatar);
+    if ($user_avatar) {
+        $avatar = "<img src='/uploads/users/$user_id/$user_avatar' alt='' width='20' height='20' class='rounded-circle object-fit-cover'>";
+    } else {
+        $avatar = "<span class='position-relative d-inline-flex' aria-hidden='true'><i class='fas fa-circle fs-5 text-secondary'></i><span class='position-absolute top-50 start-50 translate-middle small text-white'><small>" . escapeHtml(initials($user_name)) . "</small></span></span>";
+    }
+
+    return "<span class='$pill text-body-emphasis bg-body-secondary'>$avatar" . escapeHtml($user_name) . "</span>";
 }
 
 

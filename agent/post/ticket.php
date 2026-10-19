@@ -140,7 +140,9 @@ if (isset($_POST['add_ticket'])) {
 
         $footer = getEmailFooter();
         $subject = "Ticket Created [$ticket_prefix$ticket_number] - $ticket_subject";
-        $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>A ticket regarding \"$ticket_subject\" has been created for you.<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: Open<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br>$footer<br>$config_ticket_from_email<br>$company_phone";
+        // SLA response commitment for this client + priority, empty when no SLA applies
+        $sla_notice = escapeSql(getTicketSlaEmailNotice($ticket_id, $company_phone));
+        $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>A ticket regarding \"$ticket_subject\" has been created for you.<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status_name<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a>$sla_notice<br>$footer<br>$config_ticket_from_email<br>$company_phone";
 
         // Queue one message with the ticket contact in To and all watchers in
         // Cc, so every participant can see the conversation membership and use
@@ -291,7 +293,9 @@ if (isset($_POST['edit_ticket'])) {
 
         $footer = getEmailFooter();
         $subject = "Ticket Created - [$ticket_prefix$ticket_number] - $ticket_subject";
-        $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>A ticket regarding \"$ticket_subject\" has been created for you.<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br>$footer<br>$config_ticket_from_email<br>$company_phone";
+        // SLA response commitment for this client + priority, empty when no SLA applies
+        $sla_notice = escapeSql(getTicketSlaEmailNotice($ticket_id, $company_phone));
+        $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>A ticket regarding \"$ticket_subject\" has been created for you.<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a>$sla_notice<br>$footer<br>$config_ticket_from_email<br>$company_phone";
 
 
         // Only add contact to email queue if email is valid
@@ -488,7 +492,9 @@ if (isset($_POST['edit_ticket_contact'])) {
 
         $footer = getEmailFooter();
         $subject = "Ticket Created - [$ticket_prefix$ticket_number] - $ticket_subject";
-        $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>A ticket regarding \"$ticket_subject\" has been created for you.<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a><br>$footer<br>$config_ticket_from_email<br>$company_phone";
+        // SLA response commitment for this client + priority, empty when no SLA applies
+        $sla_notice = escapeSql(getTicketSlaEmailNotice($ticket_id, $company_phone));
+        $body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>A ticket regarding \"$ticket_subject\" has been created for you.<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status<br>Portal: <a href=\'https://$config_base_url/guest/guest_view_ticket.php?ticket_id=$ticket_id&url_key=$url_key\'>View ticket</a>$sla_notice<br>$footer<br>$config_ticket_from_email<br>$company_phone";
 
         $data[] = [
             'from' => $config_ticket_from_email,
@@ -1807,9 +1813,10 @@ if (isset($_POST['add_ticket_reply'])) {
     // Defaults
     $send_email = 0;
     $ticket_reply_id = 0;
-    if ($_POST['public_reply_type'] == 1 ){
+    $public_reply_type = intval($_POST['public_reply_type'] ?? 0);
+    if ($public_reply_type == 1) {
         $ticket_reply_type = 'Public';
-    } elseif ($_POST['public_reply_type'] == 2 ) {
+    } elseif ($public_reply_type == 2) {
         $ticket_reply_type = 'Public';
         $send_email = 1;
     } else {
@@ -2737,7 +2744,8 @@ if (isExportRequest('export_tickets')) {
             $ticket_sla_query = 'AND ticket_sla_id > 0 AND COALESCE(ticket_status_pauses_sla, 0) = 0 AND (ticket_response_sla_alert_stage = 1 OR ticket_resolution_sla_alert_stage = 1)';
             $filter_summary['SLA'] = 'SLA at risk';
         } elseif ($sla_filter == 'paused') {
-            $ticket_sla_query = 'AND ticket_sla_id > 0 AND ticket_status_pauses_sla = 1';
+            // Mirrors agent/tickets.php - finished tickets have a verdict, not a pause
+            $ticket_sla_query = 'AND ticket_sla_id > 0 AND ticket_status_pauses_sla = 1 AND ticket_resolved_at IS NULL AND ticket_closed_at IS NULL';
             $filter_summary['SLA'] = 'SLA paused';
         } elseif ($sla_filter == 'met') {
             $ticket_sla_query = 'AND ticket_sla_id > 0 AND ticket_response_sla_met = 1 AND (ticket_resolution_sla_met = 1 OR ticket_resolution_due_at IS NULL)';

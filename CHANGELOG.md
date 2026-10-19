@@ -2,6 +2,277 @@
 
 This file documents all notable changes made to ITFlow.
 
+## [26.10]
+
+### Upgrading to 26.10
+
+Update from Maintenance > Update — Queue Update hands the job to cron, which updates the files and applies this release's one database change (2.7.8 to 2.7.9) in the same pass. Nothing else is required.
+
+If you are coming from 26.08 or earlier, the database update still has to be run from the command line one time, exactly as described under Upgrading to 26.09 below.
+
+### Breaking Changes and Notes
+
+- API: reading locations, documents, vendors, domains, networks and software no longer returns archived records, including when you ask for one by its ID. There is no way to list archived records through the API yet, so keep the ID of anything you archive if you may want to unarchive it later. Thanks to @Wrongecho.
+- API: a location must be archived before the delete endpoint will remove it, the same rule contacts have followed since 26.09.1.
+- Recurring Invoices: every existing recurring invoice is set to Send Automatically after the update, so nothing changes until you switch one to the new draft option below. A draft is not emailed, does not appear in the client portal, and is not charged automatically until you send it. Automatic payments only run on an invoice's due date, so if a recurring invoice also takes payment automatically, send its draft before the due date or it will not be charged.
+- Notifications: each night ITFlow posts a notification when draft invoices are waiting for review. It counts every draft invoice, including ones created by hand, so if you keep drafts around you will see it daily.
+- Stripe: payments affected by the one-cent problem under Bug Fixes are not repaired by the update. A guest invoice payment that went through in Stripe but never appeared in ITFlow still has to be added by hand with Add Payment, putting the pi_ reference from Stripe in the reference field.
+- The two shipped files in `agent/custom/includes/` (`custom_side_nav.php` and `inc_all_custom.php`) are now marked do not modify, because updates replace them. If you have edited either one, keep a copy of your version under a different name before you update.
+
+### New Features & Updates
+
+- Recurring Invoices: each recurring invoice now has an Action setting — Send Automatically, as before, or Generate Draft for Review. A draft is created on schedule as usual but waits for you to check it, change it if needed, and send it yourself. The Email Notify toggle is hidden while a recurring invoice is set to draft. Thanks to @Wrongecho.
+- Invoices: tickets can be taken back off an invoice. Each linked ticket has a remove button that unlinks it and returns it to unbilled, and the Tickets card shows each ticket's number as a link to the ticket. Billable tickets that are Resolved can now be added, not just Closed ones. Thanks to @Wrongecho.
+- Tickets: the assignee shows as a small pill with the agent's photo, or their initials if they have not uploaded one. This applies on the ticket list, the board view, the ticket itself, recurring tickets, and the ticket lists on assets, contacts and projects. An open unassigned ticket gets a red Unassigned pill that turns grey once the ticket is resolved or closed. The Mine and Unassigned buttons on the tickets page have new icons to match.
+- Networks: an archived network now shows (Archived) next to its name at the top of its page.
+- Navigation: your company name at the top of the side navigation shrinks to fit instead of overflowing when it is long. Thanks to @BoredManCodes.
+- API: new endpoints to update, archive, unarchive and delete locations; archive and unarchive documents and software; and create, update, archive and unarchive vendors, domains and networks. For domains, the DNS and WHOIS details are looked up from the domain itself rather than taken from the request, and so is the expiry date when you do not send one. Thanks to @Wrongecho.
+
+### Bug Fixes
+
+- Stripe: about one card payment in fifteen was charged a cent less than the invoice balance. When paid from a guest invoice link, the payment then failed to record in ITFlow even though Stripe had taken the money. When paid automatically, from the client portal or by an agent, it was recorded a cent short and the invoice was marked Paid. Charges now match the balance exactly. See the note above about payments already affected.
+- Invoices: adding an unbilled ticket from the invoice page did not work. The Tickets card that holds the add button also only appeared once a ticket was already linked, so the first ticket could never be added there. Both are fixed. Thanks to @Wrongecho.
+- Licenses: archived licenses could not be restored, because the menu on an archived license still offered Edit and Archive. It now offers Restore. Restoring does not bring back the asset and contact assignments that archiving removed.
+- Assets: a login entered while creating an asset was only saved if it had a username, so a password on its own was lost. A username or a password on its own is now enough.
+- Copy buttons inside pop-up windows, such as the ones for credentials and a new API key, did nothing. They copy again.
+- Editor: inside pop-up windows, the editor's "..." button for more tools closed as soon as it opened, and the link dialog would not take typing, so links could not be added or edited. The editor's other drop-down menus and dialogs were affected the same way. All of them work again.
+- Editor: closing a pop-up that contains an editor and opening it again, New Ticket for example, brought the editor back as a plain text box until the page was refreshed. It now loads every time.
+- Documents: images in documents, document versions and queued emails opened in a pop-up spilled past the edge of the window, and tables showed without their styling. The same happened in document previews on the Files page. Both now display properly.
+- Tickets: in Change Client, picking the new client did not load that client's contacts, so no contact could be chosen.
+- Client Portal: the header with your photo, the welcome line and the company logo no longer breaks onto separate rows on smaller screens, and the menu button on phones shows a proper menu icon. Thanks to @BoredManCodes.
+- Restore the ability to type in a manual entry in select boxes with data-tags=true inclusing adding custom ticket watchers.
+
+### Developer Updates
+
+- Database 2.7.9 adds `recurring_invoices.recurring_invoice_auto_send` (`tinyint(1) NOT NULL DEFAULT 1`). It is read by the nightly run in `cron/nightly_tasks.php` and by `force_recurring` in `agent/post/recurring_invoice.php`. Invoices generated in draft mode are inserted as Draft and everything else as Sent, as before. The cron email still also requires `config_recurring_auto_send_invoice` and the recurring invoice's email notify to be on.
+- The nightly draft notice is a single `appNotify('Draft Invoices', ...)` linking to `invoices.php?status=Draft`. It is raised whenever any Draft invoice exists.
+- Stripe: all four PaymentIntent sites (`agent/post/payment.php`, `client/post.php`, `cron/nightly_tasks.php`, `guest/guest_ajax.php`) now send `intval(round($balance_to_pay * 100))`.
+  - `intval()` alone truncates, and about 6.6% of two-decimal amounts land just under the whole cent in floating point (2.01 × 100 = 200.999…).
+  - The guest return path compares whole cents with `round()` on both sides, so the short charge failed that check and nothing was booked.
+  - The other three paths compare whole dollars, so the short charge passed and they booked the short amount. Those dollar-level checks are unchanged.
+- `formatAssignee($user_id, $user_name, $user_avatar, $highlight_unassigned = true)` in `functions/format.php` replaces the assignee rendering at nine sites. Callers need `user_avatar` in their query. It was added to the related-ticket queries on contacts and projects and to `$ticket_select_columns` in `agent/tickets.php`.
+- TinyMCE in modals: Bootstrap 5's focus trap pulled focus back out of TinyMCE's popups, which render in `.tox-tinymce-aux` on `<body>`.
+  - `js/app.js` binds a `focusin` listener on `.tox-tinymce-aux` once at page load, and it calls `stopImmediatePropagation()`. Bootstrap adds its own listener each time a modal opens, so this one always runs first.
+  - `js/ajax_modal.js` now removes a modal's TinyMCE editors on `hidden.bs.modal`. TinyMCE kept the dead editor in its registry, and `tinymce.init` skipped the next textarea with the same id.
+- Scripts loaded inside ajax modals cannot rely on `DOMContentLoaded`, which has already fired by then.
+  - `js/pretty_content.js` now exposes `prettyContent()` and runs it immediately when the document is already parsed. `agent/files.php` calls it again after loading a preview.
+  - `agent/js/ticket_change_client.js` moved to `itflowReady()`.
+- Clipboard: the ClipboardJS container is now chosen per click — the trigger's own modal, otherwise `body` — so Bootstrap's focus trap no longer swallows the copy.
+- Sidebar brand: `agent/css/sidebar_brand_fix.css` and `agent/js/sidebar_brand_fix.js` are loaded from `agent/includes/side_nav.php`. They scale `#sidebar-brand-text` with a CSS transform, driven by a `ResizeObserver` on the brand link. The custom side nav does not load them.
+- Invoices: new `remove_ticket_from_invoice` GET handler in `agent/post/invoice.php` (CSRF token in the URL, `module_sales` 2, `enforceClientAccess`). `add_ticket_to_invoice` now redirects to the invoice instead of `post.php`, and the billable list is `ticket_status IN (4, 5)`.
+- Software: new `restore_software` handler in `agent/post/software.php` (`module_support` 2).
+- API: new endpoint files under `api/v1/`:
+  - `locations/{update,archive,unarchive,delete}`, `documents/{archive,unarchive}`, `vendors/{create,update,archive,unarchive}`, `domains/{create,update,archive,unarchive}`, `networks/{create,update,archive,unarchive}` and `software/{archive,unarchive}`.
+  - New `vendor_model.php`, `domain_model.php` and `network_model.php`.
+  - Writes are POST and scoped by the posted `client_id`. Every `read.php` for those modules now filters on `*_archived_at IS NULL`.
+  - Domain create and update call `getDnsRecords()` and `getDomainExpirationDate()`, so each request does live DNS and WHOIS lookups. Update writes `domain_history` rows the way the web form does.
+  - Archiving software through the API only sets `software_archived_at` and leaves `software_assets` and `software_contacts` alone. The web archive deletes them.
+- `add_asset` in `agent/post/asset.php` creates the credential when either a username or a password is posted. It previously required a username.
+
+### Library Updates
+
+- Bump TinyMCE from 8.8.2 to 8.9.2.
+- Bump stripe-php from 21.0.0 to 21.3.2. The pinned API version moves from 2026-06-24.dahlia to 2026-08-26.dahlia. `TelemetryId` is unchanged, so `includes/stripe_init.php` is still needed.
+- Bump FullCalendar from 7.0.2 to 7.1.0.
+- Bump DataTables from 3.0.1 to 3.1.2.
+
+## [26.09.3] Maint Release
+
+### Upgrading to 26.09.3
+
+Update from Maintenance > Update — Queue Update hands the job to cron and it applies on its own. There is no database change in this release, so nothing else is required.
+
+### Breaking Changes and Notes
+
+- New tickets are now assigned to whoever is creating them. The assignee on the ticket form and on the client bulk-add form starts on your own name instead of Unassigned, and you can still pick anyone else or Unassigned before saving.
+- API: a ticket created with an assignee now comes in as Open rather than New, matching what happens when an agent assigns a ticket by hand. Anything of yours that watches for New tickets to pick up work will no longer see assigned ones.
+- Tax Summary and the dashboard Income by Category chart will show different numbers than they did before. Both were wrong wherever an invoice had been partly paid, and both usually read high. The corrected figures are described under Bug Fixes.
+
+### New Features & Updates
+
+- Invoices: a partly paid invoice shows what is still owed in red underneath the invoice total in the list, so you can see the outstanding balance without opening the invoice.
+
+### Bug Fixes
+
+- Invoices: the Unpaid figure at the top of the invoice list counted the whole of every partly paid invoice rather than what was left on it, and counted that invoice again for each payment against it. An invoice for $1,000 with three payments of $100 added $3,000 to Unpaid; it now adds the $700 that is actually outstanding.
+- Reports: Tax Summary counted an invoice's full tax once per payment recorded against it, so a partly paid invoice with three payments reported three times its tax. Tax is now booked to the month the money came in, in proportion to how much of the invoice that payment covered, and each payment is counted once. Yearly totals also no longer disagree with the months they are made of.
+- Dashboard: the Income by Category chart only counted invoices marked Paid, so partly paid invoices contributed nothing and revenues entered outside an invoice never appeared at all. It now counts payments and revenues as they land, matching the Cash Flow chart above it and the Income Summary report.
+- Tickets: ticket-created emails told the client the status was Open no matter what the ticket was actually set to. They now carry the real status, on tickets an agent creates and on scheduled tickets from recurring tickets.
+- Tickets: the assignee list on the client bulk-add form left out agents on the Accountant role and did not match the list on the normal ticket form. Both lists are now the same.
+- Quotes and Recurring Invoices: picking a product from the item autocomplete put the word "undefined" in the item name, while the description and price filled in correctly. Invoices were not affected. The product list behind the box was also missing information on those two pages, so every entry read "No tax", services showed a stock badge, and searching by product code did not match. Reported by @cthompson.
+
+### Developer Updates
+
+- `getMonthlyTax()` and `getQuarterlyTax()` in `functions/app.php` are rewritten. They previously joined `invoice_items` to `invoices` to `payments`, which multiplied the line-item rows by the payment rows — the double counting was row multiplication, not a rounding problem. Both now drive off `payments`, join a pre-aggregated per-invoice tax subquery, and scale by `payment_amount / invoice_amount`, with `invoice_amount > 0` guarding the division. `agent/reports/tax_summary.php` also dropped a second loop that recalculated each row total by calling `getMonthlyTax()` another twelve times; the total accumulates in the first loop instead, cutting the queries behind the monthly view in half.
+- `agent/invoices.php`: the Partial total no longer selects `SUM(invoice_amount)` across a `payments` join, and payments against partial invoices are subtracted from the unpaid figure. The list query gained a derived `LEFT JOIN (SELECT payment_invoice_id, SUM(payment_amount) ... GROUP BY payment_invoice_id)` for the per-row balance, which keeps it to one query rather than one per row.
+- `agent/dashboard.php`: the `TopCategories` temporary table is now built from a `UNION ALL` of payments (carrying their invoice's category) and revenues, keyed on payment and revenue dates rather than `invoice_status = 'Paid'` and `invoice_date`. The Other bucket is built from the same union.
+- `api/v1/tickets/create.php` sets `ticket_status = 2` when `assigned_to > 0`, rather than always inserting status 1.
+- `agent/modals/client/client_bulk_add_ticket.php` filtered the assignee list on `user_role_id > 1` where every other assignee list uses `user_type = 1`. Role 1 is the built-in Accountant role, so accountant-role agents were missing from it.
+- Product autocomplete is consolidated. The three pages each carried their own product `SELECT` and their own copy of the autocomplete JavaScript; the queries drifted, and quote and recurring invoice were still on a four-column version that had no `product_name` or `prod_id`, so the shared `onSelect` wrote `undefined` into `#name`. Its last line also assigned to `#product_id`, which only the invoice form has, so `onSelect` threw a `TypeError` on those two pages and the `input` handler under it threw on every keystroke. The query now lives in `getProductsForAutocomplete($mysqli)` in `functions/app.php` and the JavaScript in `js/product_autocomplete.js`, with the hidden `#product_id` added to the quote and recurring item forms and treated as optional in the JavaScript. Net 218 lines removed for 134 added. Note that `item_product_id` is still only written by `add_invoice_item` and the API, so the hidden field on those two forms is inert until the handlers are wired up.
+
+## [26.09.2] Maint Release
+
+- Updates the App Version to a proper version number.
+
+
+## [26.09.1] Maint Release
+
+### Upgrading to 26.09.1
+
+Update from Maintenance > Update — Queue Update hands the job to cron and it applies on its own. There is no database change in this release, so nothing else is required.
+
+### Breaking Changes and Notes
+
+- API: a contact must be archived before the delete endpoint will remove it. Deleting an active contact is refused and reports nothing deleted, so archive it first and then delete. Thanks to @Wrongecho.
+
+### Bug Fixes
+
+- Assets: IP address fields demanded all three digits of every octet, so `10.0.0.1` had to be entered as `010.000.000.001`. They take natural input again, and a field holding DHCP is now left alone rather than being emptied the moment the modal opens.
+- Networks: in the IP list, an empty hostname or description shows a dash rather than a blank cell, the column headings match the rest of the app, and the table is tighter so more addresses fit on screen.
+
+### Developer Updates
+
+- The IPv4 mask in `js/app.js` is a regex mask rather than four `IMask.MaskedRange` blocks. A pattern mask will not advance past a separator until the current block reaches its `maxLength`, which is what forced the three-digit octets. A regex mask has no per-block completeness rule and tests the whole value on each keystroke, so a partial `10.0.` is valid on its own. Octets are still bounded to 0-255 and leading zeros are still accepted, matching what the old jquery.inputmask `ip` alias allowed. Any value not made purely of digits and dots is skipped, because `interface_ip` and `asset_ip` are `varchar(200)` and also carry the literal `DHCP` written by the checkbox on those same modals.
+- Dead display variables removed from the asset, expense and product listings. `$asset_description_display`, `$client_name_display` and `$product_description_display` are folded into `?: '-'` at the point of assignment.
+
+## [26.09]
+
+### Upgrading to 26.09
+
+> **The database update has to be run from the command line one more time.** The web interface no longer applies database updates, and the new queued-update path needs a schema change that this release itself adds — so on this one upgrade there is nothing in the browser that can finish the job. After this, it goes back to being a single button.
+
+1. **Back everything up.** Maintenance > Backup, or a full VM snapshot.
+2. **Update the files from Maintenance > Update as normal.** The old page pulls the new files and reports success, then drops you into 26.09 running against the 26.08 database. Errors at that point are expected and stop as soon as step 3 completes.
+3. **Run the database update from the command line.** Run it as the user that owns the ITFlow files — the script tells you which user if you get it wrong:
+```bash
+sudo -u www-data php /var/www/itflow.example.com/scripts/update_cli.php
+```
+It applies every pending version from 2.6.8 to 2.7.8 in order and reports each one as it goes. If a step fails it stops there without advancing the recorded version, so you can fix the cause and run it again.
+4. **Check it took.** Maintenance > Update should show the database up to date and the Queue Update button available.
+
+From here on the command line is optional. Maintenance > Update hands the work to cron, which updates the files and the database in one pass.
+
+### Breaking Changes and Notes
+
+- Updates are no longer applied by your browser. Maintenance > Update either hands the job to cron, which runs it in the background, or you run it from the shell. As a side effect ITFlow now updates cleanly on hardened hosts that disable PHP's shell functions, which it could not do before.
+- Database updates have been removed from the web interface entirely. Cron applies them as part of a queued update, or you run `php scripts/update_cli.php` yourself.
+- Running `php scripts/update_cli.php` with no arguments updates the files and then the database in one go, and the file update is forced — any local edits you have made to shipped files are discarded. Use `--update_db` if you only want the database half; it never touches your files.
+- If you have added your own CSS or JavaScript under `agent/custom/`, expect it to need updating. The interface has moved to a new major version of the framework it is built on and most class names have changed. Details are in Developer Updates below.
+- Deleting a payment now requires Full access to both Sales and Financial, up from Modify. Refunding requires the same. Deleting a payment removes money from the books, so it is treated as a delete rather than an edit — agents who could remove payments before may no longer be able to.
+- The five built-in ticket statuses now have fixed SLA clock behaviour and can no longer be configured. New and Open always run; On Hold, Resolved and Closed always pause the resolution clock. Only custom statuses keep the SLA Clock dropdown, and the built-ins are marked "(fixed)" in the list.
+- On Hold pauses the resolution clock, not the response clock, and only once the ticket has had its first reply. A ticket parked on hold before anyone replies still breaches its response target — reply first, then hold.
+- Breaches already recorded against on-hold tickets under the old behaviour are left as they are. Change a ticket's priority or SLA to re-stamp it if you want it recalculated.
+- Holidays and closure days are new and start empty. Until you add them, SLA clocks keep running through your closures exactly as they did before.
+- Tickets default to Medium priority when none is given, and ticket replies default to Public.
+- Closed tickets can no longer be deleted. A closed ticket is treated as a permanent record.
+- Send Email on invoices and quotes now opens a contact picker rather than sending straight away. Quick Send, described below, keeps the old one-click behaviour, but any bookmarked direct links to the send action no longer work.
+
+### New Features & Updates
+
+- The interface has had a full visual overhaul, with dark mode carried properly through the calendar, the editor, confirmation dialogs, tables and form controls.
+- Your theme colour and any custom CSS now apply everywhere, including the client portal, the guest pages, login and setup. Those pages previously ignored both and rendered in the default styling.
+- Ticket: canned responses. Add them under Admin > Templates > Canned Responses, scoped to a ticket category or to all categories, and pick one from the reply form. It inserts at the cursor, so picking one into a half-written reply adds to it rather than replacing it.
+- Ticket: SLA response targets now appear on ticket-created emails, rolled up to business days, with a note to call in on High and Urgent.
+- Ticket: the reply card stays out of the way until you click Reply.
+- SLA: holidays and closure days. Define the days you are closed and the SLA clock pauses through them, with a one-click importer for US federal holidays.
+- Networks: a full IP address section under each subnet — address, hostname and description, with search, sort, bulk delete, CSV import and export. Addresses are checked against the subnet they are being added to and duplicates within a subnet are refused, so the same guard applies whether you type one in or import a thousand. Both IPv4 and IPv6, sorted numerically so .9 comes before .10.
+- Designate one client record as your own organization, under Company Details. Clicking your company name at the top of the side navigation now takes you straight to it.
+- Invoices and Quotes: Quick Send is a one-click send to the default contacts, the way Send Email used to work — primary and billing for invoices, primary for quotes. It sits at the top of the actions menu with a lightning bolt and asks for confirmation, and never opens the picker.
+- Invoices and Quotes: Send Email, below it, opens a modal listing every contact on the client with their email addresses and the same defaults pre-checked, for when the invoice needs to go somewhere other than the usual place. Who it went to is recorded in the document history either way.
+- Invoices and Quotes: Mark Sent asks how it was sent — snail mail, an email client, in person and so on — and records the reason in the history.
+- Stripe: refund a card payment from the invoice itself. The refund goes through Stripe, is written to the invoice history, and the payment is removed, replacing the old routine of deleting the payment in ITFlow and refunding it by hand in the Stripe dashboard.
+- Stripe: adding or editing the Stripe provider now checks the secret key against Stripe and tells you if it is wrong, instead of the key looking fine until the first client tries to pay.
+- Stripe: a client paying from a guest invoice link no longer needs a Stripe customer record to exist first — Pay Now sets one up as part of the payment.
+- Client account statements. Send one from the invoice list with a date range and an option to leave out paid invoices, view it on the guest invoice page, and download it as a PDF from the client portal.
+- Files: documents and files are now told apart, with a filter for all documents or just files. Thumbnail view shows every file, previews work for documents, PDFs and text, and your choice of list or thumbnail view survives navigating between folders.
+- Client Portal: the profile page has been rebuilt — department, location, title and phone with inline editing, PIN changes, recent sign-ins and recent activity, with a separate full activity page.
+- Client Portal: empty tables now say what is missing instead of showing a bare header row, and the saved payment method wording is clearer about what saving a card actually does.
+- Guest: the ticket task approval page has been rebuilt. The request being approved leads the page, the ticket body sits underneath as context, the approve action is a proper button rather than a link in a paragraph, and approving or declining lands on a real confirmation screen. Internal routing jargon that meant nothing to a client has been dropped.
+- Guest and client portal pages now have proper footers, and the agent footer stays at the bottom of short pages instead of floating mid-screen.
+- Phone numbers show their country code, and the country is kept when you edit the number. The international phone input is now used on every phone field.
+- Maintenance > Update: Queue Update hands the update to cron, which runs it in its own process and updates the files and the database in one pass. Check now looks for new commits without needing shell access, listing the pending commits with their dates and descriptions.
+- Mail Parser: you are now notified when the parser skips an autogenerated email rather than it disappearing silently.
+- Demo data. Twenty fictional clients with two years of history — a mix of managed and break-fix, tickets, invoices, expenses, assets and contracts, including FOSS products — loaded from Maintenance > Starter Content and tagged so it can be cleared out again.
+- API: reads accept an optional `client_id` filter on top of the key's own client scoping, so a key that can see everything can ask for one client's records. It can only narrow — a key with no access to that client still gets nothing.
+- API: new endpoints to close a ticket and to delete a client. Closing resolves the ticket first if it has not been resolved already, so the SLA figures come out right. Thanks to @BoredManCodes for the client delete endpoint.
+- Client pages load noticeably faster, running roughly a third fewer queries than before, and several pages that were slow on large installs have been sped up.
+- Lists now say whether nothing matched your filters or there are no records at all, instead of showing an empty table either way.
+- Assets and Contacts: an "Add primary" link where a client has no primary location or contact set.
+- The client header at the top of client pages collapses, and stays collapsed as you move between pages.
+- Page changes fade in rather than flashing, the calendar reserves its height so the page no longer jumps as it loads, and table listings line up consistently across the app.
+
+### Security
+
+- A restricted agent could open an asset, contact or location belonging to a client they have no access to by entering its id in the address bar. Those pages are now gated on the module permission that owns them and checked against the agent's client access rules, like every other record page.
+- Client Portal: changing a password or a PIN now requires the current password. Contacts signing in through SSO are exempt — there is no local password to check and the identity provider has already done it.
+- A user name containing HTML could inject markup into the page through the ticket task approver list. It no longer can.
+- Deleting and refunding payments now require Full access to both Sales and Financial, as described under Breaking Changes.
+
+### Bug Fixes
+
+- Tickets could not be opened for clients marked as a lead.
+- Client Portal: raising a ticket sent no new-ticket notification — the notification errored out instead.
+- The readable password generator called a function that no longer existed, so generating one did nothing.
+- Client pages flashed blank on every load.
+- Invoice emails went to archived contacts, and every copy carried the primary contact's name in the greeting rather than the name of the contact receiving it.
+- Guest: the confirmation dialog on ticket task approvals and on quote accept and decline rendered as plain text at the foot of the page instead of as a dialog, because the guest pages never loaded its stylesheet.
+- Filtering the audit log by date was slow on large installs.
+- API: deleting an asset reported how many interfaces it had removed rather than confirming the asset itself was deleted.
+- API: updating a client failed outright if the request did not include the lead field.
+- API: a request that authenticated correctly but then failed on the query wrote nothing to the app log, leaving nothing to debug from.
+
+### Developer Updates
+
+Front-end framework migration:
+- AdminLTE 3.2.0 to 4.9.1 and Bootstrap 4.6.2 to 5.3.8. The layout skeleton is renamed throughout — `content-wrapper`, `main-sidebar` and `main-header` become `app-main`, `app-content`, `app-sidebar` and `app-header`.
+- AdminLTE 4 dropped a number of v3 classes ITFlow relies on. `text-bold`, `text-sm`, `btn-default`, `img-circle`, the `.alert .icon` pairing, the sidebar badge positioning, the `small-box` watermark icon and all sixteen theme colours are reproduced in `css/itflow_custom.css` at v3's computed values, driven by a single `--itflow-accent` variable per theme.
+- Bootstrap 5 split `.bg-*` from `.text-bg-*`, so every `bg-dark` card and modal header needed its text colour restored explicitly.
+- `input-group-append` and `input-group-prepend` wrappers are deleted rather than renamed, selects moved from `form-control` to `form-select`, `data-toggle="buttons"` groups became `.btn-check`, and `custom-control`, `custom-select` and `custom-file` are gone.
+- `.input-group > .form-control` at specificity (0,2,0) outranks `.form-control-color`'s `width:3rem` at (0,1,0), which collapsed every colour swatch. Fixed with a matching-specificity `.input-group > .form-control-color` rule rather than a `w-auto` override, which only hands the width to the UA default.
+- Stylesheets and scripts were repeatedly found loaded by `includes/header.php` only. `css/itflow_custom.css` and `libs/sweetalert2/css/sweetalert2.min.css` are now loaded by the client portal, guest, login, setup and MFA headers as well — the SweetAlert2 gap is why guest dialogs rendered in normal flow, since all of its positioning lives in the stylesheet while `includes/footer.php` was loading the JS fine.
+
+jQuery removal:
+- jQuery, jQuery UI, select2, Inputmask, daterangepicker, Moment, Tempus Dominus, toastr, pdfmake, Dropzone and Popper are all gone. Replacements are Tom Select, Flatpickr, IMask, SweetAlert2 and Bootstrap's own toasts, plus `js/autocomplete.js` for the product and OS autocompletes.
+- New helpers in `js/app.js`: `itflowPostForm()` reproduces jQuery's bracketed array encoding that `ajax.php` parses, `itflowBindOnce()` replaces the namespaced `.off().on()` pattern, and `initTomSelect` / `refreshTomSelect` / `clearTomSelect` / `setTomSelectValue` wrap Tom Select.
+- `includes/modal_footer.php` re-executes `js/app.js` on every ajax modal open, so every initialiser needs a re-entry guard or it double-initialises.
+- New `itflowReady()` restores jQuery's `.ready()` semantics. Scripts injected into an ajax modal run after `DOMContentLoaded` has already fired, so a bare listener never runs — this is what broke notification pagination, asset OS autocomplete, the contact authentication toggle, AI ticket summaries and AI document template generation mid-cycle.
+- `js/ajax_modal.js` re-injects `<script>` tags explicitly, because `innerHTML` does not execute them and `.append()` did.
+
+Schema and queries:
+- `history_description` widens from `varchar(200)` to `text` (2.7.7). A send to several recipients overflows 200 characters and strict mode errors rather than truncating.
+- Indexes added on the client-scoped columns (2.7.5), the per-parent child fetches and the mail queue loop (2.7.6), and `logs(log_user_id, log_client_id)` for the portal profile and activity pages (2.7.8). No new migrations after 2.7.8 — the Stripe work reuses `client_payment_provider`.
+- `agent/includes/inc_all_client.php` rewritten so the sidebar badge counts are one query per table rather than one per number: 43 queries to 27 per client page load, with invoices scanned once instead of eight times.
+- `admin/audit_logs.php`'s date filter was `DATE(log_created_at) BETWEEN`, which is not sargable and made `KEY log_created_at` unusable. It is now a half-open range.
+
+API:
+- `apiClientScopeSql()` now takes an optional caller-supplied `client_id` and appends it after the scope fragment, so the filter can only narrow what the key is already allowed to see. Reads only — writes take `client_id` as the target they act on and validate it separately.
+- `api/v1/tickets/close.php` sets status 4 with `ticket_resolved_at` first where the ticket has not been resolved, calls `syncTicketSlaClock()` and `setTicketResolutionSlaMet()`, then sets status 5 and stamps `ticket_closed_by`. Every query is scoped by `ticket_client_id` and `ticket_closed_at IS NULL`, so a second call is a no-op rather than a re-close.
+- The four `*_output.php` helpers now `logApp()` on query failure, which previously returned an error to the caller and left no trace server-side.
+
+Other:
+- The client portal PIN handler checked length before `escapeSql()`, whose `strip_tags()` then emptied the value, and stored the blank while flashing success. Length is now checked after sanitising.
+- The client delete modal's script was blocking the parser mid-body, which is why every client page flashed blank; it is deferred now.
+- The gating fix under Security covers `agent/asset.php`, `agent/contact.php`, `agent/contacts.php` and `agent/locations.php`.
+- The ticket task approver picker built `<option>` markup by template literal into `innerHTML`; it uses `new Option()` now, which assigns text.
+- Stripe refunds live in `agent/post/payment.php` behind `refund_payment_stripe`, pulling the payment intent out of the stored reference and calling `refunds->create()` for the full amount. Partial refunds are not supported.
+- Payment provider post variables moved into a model to stop the add and edit paths drifting apart.
+- New `functions/network.php` (subnet containment and IP normalisation, v4 and v6) and `functions/files.php`; `functions/sla.php` extended for holidays and closure days.
+- Phone input handling moved out of `js/app.js` into `js/phone_inputs.js` so the client portal can load it without pulling in everything else.
+- Update path: `admin/post/update.php` no longer shells out at all. `cron/update_check.php` does the fetch and stores the result, `cron/app_update.php` runs `scripts/update_cli.php` as a child process, and the database phase re-execs against the newly updated code so a migration calling a brand new helper does not hit an undefined function.
+- Removed 29 dead or duplicate files, including 348KB of unused FullCalendar themes, and fixed two broken script paths.
+- The debug page now recommends 512M for PHP's memory limit.
+- README, CONTRIBUTING and SECURITY.md updated.
+
+### Library Updates
+
+- Bump AdminLTE from 3.2.0 to 4.9.1.
+- Bump Bootstrap from 4.6.2 to 5.3.8.
+- Bump intl-tel-input from 25.3.0 to 29.2.3.
+- Bump ImapEngine from 1.25.4 to 1.25.6, along with its dependencies.
+- Added Tom Select, Flatpickr, IMask and SweetAlert2, none of which need jQuery.
+- DataTables now uses its Bootstrap 5 styling build.
+- Removed jQuery, jQuery UI, select2, select2-bootstrap4-theme, Inputmask, daterangepicker, Moment, Tempus Dominus, toastr, pdfmake, Dropzone, Popper and Show-Hide-Passwords-Bootstrap-4.
+
 ## [26.08.2] Maint Release
 
 ### Upgrading to 26.08.2
@@ -15,7 +286,6 @@ Update the files from Settings > Update as normal. There is no database change i
 - Exports: restored the missing columns on the ticket, quote, recurring invoice, software and user exports.
 - API: restored the full record on the credentials list endpoint.
 - Mail: switching an existing install from Standard SMTP/IMAP to Microsoft 365 or Google OAuth no longer leaves the old mail server behind, which stopped sending and ticket email fetching from working. The connection settings for OAuth providers are now fixed by the provider and cleared on save.
-
 
 ## [26.08.1] Maint Release
 

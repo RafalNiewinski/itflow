@@ -441,7 +441,10 @@ if (mysqli_num_rows($sql_recurring_tickets) > 0) {
         if (!empty($config_smtp_provider) && $config_ticket_client_general_notifications == 1 && filter_var($contact_email, FILTER_VALIDATE_EMAIL)) {
 
             $email_subject = "Ticket created - [$ticket_prefix$ticket_number] - $ticket_subject (scheduled)";
-            $email_body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>A ticket regarding \"$ticket_subject\" has been automatically created for you.<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: Open<br>Portal: https://$config_base_url/client/ticket.php?id=$id<br><br>--<br>$company_name - Support<br>$config_ticket_from_email<br>$company_phone";
+            // SLA response commitment for this client + priority, empty when no SLA applies
+            $sla_notice = escapeSql(getTicketSlaEmailNotice($id, $company_phone));
+            $ticket_status_name = escapeSql(getTicketStatusName($ticket_status));
+            $email_body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>A ticket regarding \"$ticket_subject\" has been automatically created for you.<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status_name<br>Portal: https://$config_base_url/client/ticket.php?id=$id$sla_notice<br><br>--<br>$company_name - Support<br>$config_ticket_from_email<br>$company_phone";
 
             $email = [
                     'from' => $config_ticket_from_email,
@@ -674,7 +677,7 @@ if ($config_send_invoice_reminders == 1) {
 // Logging
 // logAudit("Cron", "Task", "Cron created notifications for past due invoices and sent out notifications to the primary and billing contacts email");
 
-// Send Recurring Invoices that match todays date and are active
+// Generate & Send Recurring Invoices that match todays date and are active
 
 //Loop through all recurring that match today's date and is active
 $sql_recurring_invoices = mysqli_query($mysqli, "SELECT client_name, client_net_terms, recurring_invoice_amount, recurring_invoice_category_id,
@@ -682,7 +685,7 @@ $sql_recurring_invoices = mysqli_query($mysqli, "SELECT client_name, client_net_
     recurring_invoice_discount_amount, recurring_invoice_email_notify,
     recurring_invoice_frequency, recurring_invoice_id, recurring_invoice_last_sent,
     recurring_invoice_next_date, recurring_invoice_note, recurring_invoice_scope,
-    recurring_invoice_status, recurring_payment_account_id, recurring_payment_currency_code,
+    recurring_invoice_status, recurring_invoice_auto_send, recurring_payment_account_id, recurring_payment_currency_code,
     recurring_payment_method, recurring_payment_recurring_invoice_id FROM recurring_invoices
     LEFT JOIN recurring_payments ON recurring_invoice_id = recurring_payment_recurring_invoice_id
     LEFT JOIN clients ON client_id = recurring_invoice_client_id
@@ -701,6 +704,7 @@ while ($row = mysqli_fetch_assoc($sql_recurring_invoices)) {
     $recurring_invoice_amount = floatval($row['recurring_invoice_amount']);
     $recurring_invoice_currency_code = escapeSql($row['recurring_invoice_currency_code']);
     $recurring_invoice_note = escapeSql($row['recurring_invoice_note']);
+    $recurring_invoice_auto_send = intval($row['recurring_invoice_auto_send']);
     $recurring_invoice_email_notify = intval($row['recurring_invoice_email_notify']);
     $category_id = intval($row['recurring_invoice_category_id']);
     $client_id = intval($row['recurring_invoice_client_id']);
@@ -726,7 +730,7 @@ while ($row = mysqli_fetch_assoc($sql_recurring_invoices)) {
     //Generate a unique URL key for clients to access
     $url_key = randomString(32);
 
-    mysqli_query($mysqli, "INSERT INTO invoices SET invoice_prefix = '$config_invoice_prefix', invoice_number = $new_invoice_number, invoice_scope = '$recurring_invoice_scope', invoice_date = CURDATE(), invoice_due = DATE_ADD(CURDATE(), INTERVAL $client_net_terms day), invoice_discount_amount = $recurring_invoice_discount_amount, invoice_amount = $recurring_invoice_amount, invoice_currency_code = '$recurring_invoice_currency_code', invoice_note = '$recurring_invoice_note', invoice_category_id = $category_id, invoice_status = 'Sent', invoice_url_key = '$url_key', invoice_recurring_invoice_id = $recurring_invoice_id, invoice_client_id = $client_id");
+    mysqli_query($mysqli, "INSERT INTO invoices SET invoice_prefix = '$config_invoice_prefix', invoice_number = $new_invoice_number, invoice_scope = '$recurring_invoice_scope', invoice_date = CURDATE(), invoice_due = DATE_ADD(CURDATE(), INTERVAL $client_net_terms day), invoice_discount_amount = $recurring_invoice_discount_amount, invoice_amount = $recurring_invoice_amount, invoice_currency_code = '$recurring_invoice_currency_code', invoice_note = '$recurring_invoice_note', invoice_category_id = $category_id, invoice_status = 'Draft', invoice_url_key = '$url_key', invoice_recurring_invoice_id = $recurring_invoice_id, invoice_client_id = $client_id");
 
     $new_invoice_id = mysqli_insert_id($mysqli);
 
@@ -751,13 +755,17 @@ while ($row = mysqli_fetch_assoc($sql_recurring_invoices)) {
 
     }
 
-    mysqli_query($mysqli, "INSERT INTO history SET history_status = 'Sent', history_description = 'Invoice Generated from Recurring!', history_invoice_id = $new_invoice_id");
+    mysqli_query($mysqli, "INSERT INTO history SET history_status = 'Draft', history_description = 'Invoice Generated from Recurring!', history_invoice_id = $new_invoice_id");
 
-    appNotify("Recurring Sent", "Recurring Invoice $config_invoice_prefix$new_invoice_number for $client_name Sent", "/agent/invoice.php?invoice_id=$new_invoice_id", $client_id);
+    if ($recurring_invoice_auto_send == 1) {
+        appNotify("Recurring Sent", "Recurring Invoice $config_invoice_prefix$new_invoice_number for $client_name Sent", "/agent/invoice.php?invoice_id=$new_invoice_id", $client_id);
+    } else {
+        appNotify("Recurring Generated", "Recurring Invoice $config_invoice_prefix$new_invoice_number for $client_name Generated", "/agent/invoice.php?invoice_id=$new_invoice_id", $client_id);
+    }
 
     triggerCustomAction('invoice_create', $new_invoice_id);
 
-    //Update recurring dates
+    // Update recurring dates
 
     mysqli_query($mysqli, "UPDATE recurring_invoices SET recurring_invoice_last_sent = CURDATE(), recurring_invoice_next_date = DATE_ADD(CURDATE(), INTERVAL 1 $recurring_invoice_frequency) WHERE recurring_invoice_id = $recurring_invoice_id");
 
@@ -783,7 +791,8 @@ while ($row = mysqli_fetch_assoc($sql_recurring_invoices)) {
     $contact_name = escapeSql($row['contact_name']);
     $contact_email = escapeSql($row['contact_email']);
 
-    if ($config_recurring_auto_send_invoice == 1 && $recurring_invoice_email_notify == 1) {
+    // Send invoice email if: (1) Global recurring auto-send is on, (2) the recurring invoice is set to auto-send (than just be a draft), and (3) the recurring invoice is opted in for the client to be notified
+    if ($config_recurring_auto_send_invoice == 1 && $recurring_invoice_auto_send == 1 && $recurring_invoice_email_notify == 1) {
 
         $subject = "Invoice $invoice_prefix$invoice_number";
         $body = "Hello $contact_name,<br><br>An invoice regarding \"$invoice_scope\" has been generated. Please view the details below.<br><br>Invoice: $invoice_prefix$invoice_number<br>Issue Date: $invoice_date<br>Total: " . numfmt_format_currency($currency_format, $invoice_amount, $recurring_invoice_currency_code) . "<br>Due Date: $invoice_due<br><br><br>To view your invoice, please click <a href=\'https://$config_base_url/guest/guest_view_invoice.php?invoice_id=$new_invoice_id&url_key=$invoice_url_key\'>here</a>.<br><br><br>--<br>$company_name - Billing<br>$config_invoice_from_email<br>$company_phone";
@@ -850,6 +859,17 @@ while ($row = mysqli_fetch_assoc($sql_invalid_recurring_invoices)) {
     appNotify("Invoice", "Recurring invoice $invoice_prefix$invoice_number next run date is in the past!", "/agent/recurring_invoices.php");
 }
 // End Flag any active recurring "next run" dates that are in the past
+
+// Start Notify draft invoices needing review
+$sql_invoices_pending_send = mysqli_query($mysqli,"SELECT invoice_id FROM invoices WHERE invoice_status = 'Draft'");
+$invoices_pending_send = mysqli_num_rows($sql_invoices_pending_send);
+
+if ($invoices_pending_send > 0) {
+
+    appNotify("Draft Invoices", "There are $invoices_pending_send draft invoices pending review", "/agent/invoices.php?&status=Draft");
+}
+// End Notify draft invoices needing review
+
 
 
 // Start Recurring Payments
@@ -936,7 +956,7 @@ while ($row = mysqli_fetch_assoc($sql_recurring_payments)) {
 
                 try {
                     $payment_intent = $stripe->paymentIntents->create([
-                        'amount' => intval($balance_to_pay * 100),
+                        'amount' => intval(round($balance_to_pay * 100)),
                         'currency' => $recurring_payment_currency_code,
                         'customer' => $stripe_customer_id,
                         'payment_method' => $stripe_payment_method_id,
@@ -1159,7 +1179,7 @@ while ($row = mysqli_fetch_assoc($sql_invalid_recurring_expenses)) {
 
 if ($config_telemetry > 0 || $config_telemetry == 2) {
 
-    $current_version = exec("git rev-parse HEAD");
+    $current_version = gitCurrentCommit();
 
     // Client Count
     $row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('client_id') AS num FROM clients"));
@@ -1406,13 +1426,23 @@ if ($config_telemetry > 0 || $config_telemetry == 2) {
 
 
 // Fetch Updates
-$updates = checkForUpdates();
+/*
+ * The check itself is cron/update_check.php now - read what it stored rather than running a
+ * second git fetch here. Nothing to say until that job has run once, which is the same
+ * position this was in when a fetch failed.
+ */
+if (settingsColumnExists($mysqli, 'config_update_latest_commit')) {
 
-$update_message = $updates->update_message;
+    $update_check_row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT config_update_latest_commit FROM settings WHERE company_id = 1"));
 
-if ($updates->current_version !== $updates->latest_version) {
-    // Send Alert to inform Updates Available
-    appNotify("Update", "$update_message", "/admin/update.php");
+    $latest_version = (string) ($update_check_row['config_update_latest_commit'] ?? '');
+    $current_version = gitCurrentCommit();
+
+    if ($latest_version !== '' && $current_version !== '' && $latest_version !== $current_version) {
+        // Send Alert to inform Updates Available
+        appNotify("Update", "New Updates are Available [$latest_version]", "/admin/update.php");
+    }
+
 }
 
 

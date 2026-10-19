@@ -9,7 +9,8 @@ $recurring_invoice_id = intval($_GET['id']);
 $sql = mysqli_query($mysqli, "SELECT recurring_invoice_category_id, recurring_invoice_client_id, recurring_invoice_created_at,
     recurring_invoice_discount_amount, recurring_invoice_frequency,
     recurring_invoice_next_date, recurring_invoice_number, recurring_invoice_prefix,
-    recurring_invoice_scope, recurring_invoice_status FROM recurring_invoices WHERE recurring_invoice_id = $recurring_invoice_id LIMIT 1");
+    recurring_invoice_auto_send, recurring_invoice_scope, recurring_invoice_status
+     FROM recurring_invoices WHERE recurring_invoice_id = $recurring_invoice_id LIMIT 1");
 
 $row = mysqli_fetch_assoc($sql);
 $recurring_invoice_prefix = escapeHtml($row['recurring_invoice_prefix']);
@@ -19,6 +20,7 @@ $recurring_invoice_frequency = escapeHtml($row['recurring_invoice_frequency']);
 $recurring_invoice_status = escapeHtml($row['recurring_invoice_status']);
 $recurring_invoice_created_at = date('Y-m-d', strtotime($row['recurring_invoice_created_at']));
 $recurring_invoice_next_date = escapeHtml($row['recurring_invoice_next_date']);
+$recurring_invoice_auto_send = intval($row['recurring_invoice_auto_send']);
 $recurring_invoice_discount = floatval($row['recurring_invoice_discount_amount']);
 $category_id = intval($row['recurring_invoice_category_id']);
 $client_id = intval($row['recurring_invoice_client_id']);
@@ -30,10 +32,8 @@ ob_start();
 ?>
 
 <div class="modal-header bg-dark">
-    <h5 class="modal-title"><i class="fas fa-fw fa-redo-alt mr-2"></i>Editing Recur Invoice: <strong><?= "$recurring_invoice_prefix$recurring_invoice_number" ?></strong></h5>
-    <button type="button" class="close text-white" data-dismiss="modal">
-        <span>&times;</span>
-    </button>
+    <h5 class="modal-title"><i class="fas fa-fw fa-redo-alt me-2"></i>Editing Recur Invoice: <strong><?= "$recurring_invoice_prefix$recurring_invoice_number" ?></strong></h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
 </div>
 <form action="post.php" method="post" autocomplete="off">
     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
@@ -41,23 +41,19 @@ ob_start();
 
     <div class="modal-body">
 
-        <div class="form-group">
+        <div class="mb-3">
             <label>Scope</label>
             <div class="input-group">
-                <div class="input-group-prepend">
                     <span class="input-group-text"><i class="fa fa-fw fa-comment"></i></span>
-                </div>
                 <input type="text" class="form-control" name="scope" placeholder="Quick description" maxlength="255" value="<?= $recurring_invoice_scope ?>">
             </div>
         </div>
 
-        <div class="form-group">
+        <div class="mb-3">
             <label>Frequency <strong class="text-danger">*</strong></label>
             <div class="input-group">
-                <div class="input-group-prepend">
                     <span class="input-group-text"><i class="fa fa-fw fa-clock"></i></span>
-                </div>
-                <select class="form-control select2" name="frequency" required>
+                <select class="form-select select2" name="frequency" required>
                     <option value="">- Frequency -</option>
                     <option <?php if ($recurring_invoice_frequency == 'month') { echo "selected"; } ?> value="month">Monthly</option>
                     <option <?php if ($recurring_invoice_frequency == 'year') { echo "selected"; } ?> value="year">Yearly</option>
@@ -65,23 +61,19 @@ ob_start();
             </div>
         </div>
 
-        <div class="form-group">
+        <div class="mb-3">
             <label>Next Date <strong class="text-danger">*</strong></label>
             <div class="input-group">
-                <div class="input-group-prepend">
                     <span class="input-group-text"><i class="fa fa-fw fa-calendar"></i></span>
-                </div>
                 <input type="date" class="form-control" name="next_date" max="2999-12-31" value="<?= $recurring_invoice_next_date ?>" required>
             </div>
         </div>
 
-        <div class="form-group">
+        <div class="mb-3">
             <label>Income Category <strong class="text-danger">*</strong></label>
             <div class="input-group">
-                <div class="input-group-prepend">
                     <span class="input-group-text"><i class="fa fa-fw fa-tag"></i></span>
-                </div>
-                <select class="form-control select2" name="category" required>
+                <select class="form-select select2" name="category" required>
                     <option value="">- Category -</option>
                     <?php
 
@@ -96,32 +88,37 @@ ob_start();
                     }
                     ?>
                 </select>
-                <div class="input-group-append">
                     <button class="btn btn-secondary ajax-modal" type="button"
                         data-modal-url="../admin/modals/category/category_add.php?category=Income">
                         <i class="fas fa-fw fa-plus"></i>
                     </button>
-                </div>
             </div>
         </div>
 
-        <div class='form-group'>
+        <div class='mb-3'>
             <label>Discount Amount</label>
             <div class='input-group'>
-                <div class='input-group-prepend'>
                     <span class='input-group-text'><i class='fa fa-fw fa-dollar-sign'></i></span>
-                </div>
                 <input type='text' class='form-control' inputmode="decimal" pattern="-?[0-9]*\.?[0-9]{0,2}" name='recurring_invoice_discount' placeholder='0.00' value="<?= number_format($recurring_invoice_discount, 2, '.', '') ?>">
             </div>
         </div>
 
-        <div class="form-group">
+        <div class="mb-3">
+            <label>Action <strong class="text-danger">*</strong></label>
+            <div class="input-group">
+                    <span class="input-group-text"><i class="fa fa-fw fa-paper-plane"></i></span>
+                <select class="form-select select" name="auto_send" required>
+                    <option <?php if ($recurring_invoice_auto_send == 1) { echo "selected"; } ?> value="1">Send Automatically</option>
+                    <option <?php if ($recurring_invoice_auto_send == 0) { echo "selected"; } ?> value="0">Generate Draft for Review</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="mb-3">
             <label>Status <strong class="text-danger">*</strong></label>
             <div class="input-group">
-                <div class="input-group-prepend">
                     <span class="input-group-text"><i class="fa fa-fw fa-clock"></i></span>
-                </div>
-                <select class="form-control select2" name="status" required>
+                <select class="form-select select" name="status" required>
                     <option <?php if ($recurring_invoice_status == 1) {
                                 echo "selected";
                             } ?> value="1">Active</option>
@@ -134,8 +131,8 @@ ob_start();
 
     </div>
     <div class="modal-footer">
-        <button type="submit" name="edit_recurring_invoice" class="btn btn-primary text-bold"><i class="fas fa-check mr-2"></i>Save</button>
-        <button type="button" class="btn btn-light" data-dismiss="modal"><i class="fas fa-times mr-2"></i>Cancel</button>
+        <button type="submit" name="edit_recurring_invoice" class="btn btn-primary text-bold"><i class="fas fa-check me-2"></i>Save</button>
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal"><i class="fas fa-times me-2"></i>Cancel</button>
     </div>
 </form>
 

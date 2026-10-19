@@ -191,7 +191,10 @@ if (isset($_POST['bulk_force_recurring_tickets'])) {
 
                     $footer = getEmailFooter();
                     $email_subject = "Ticket Created - [$ticket_prefix$ticket_number] - $ticket_subject (scheduled)";
-                    $email_body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>A ticket regarding \"$ticket_subject\" has been automatically created for you.<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: Open<br>Portal: https://$config_base_url/client/ticket.php?id=$id<br>$footer<br>$config_ticket_from_email<br>$company_phone";
+                    // SLA response commitment for this client + priority, empty when no SLA applies
+                    $sla_notice = escapeSql(getTicketSlaEmailNotice($id, $company_phone));
+                    $ticket_status_name = escapeSql(getTicketStatusName($ticket_status));
+                    $email_body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>A ticket regarding \"$ticket_subject\" has been automatically created for you.<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status_name<br>Portal: https://$config_base_url/client/ticket.php?id=$id$sla_notice<br>$footer<br>$config_ticket_from_email<br>$company_phone";
 
                     $email = [
                         'from' => $config_ticket_from_email,
@@ -341,7 +344,10 @@ if (isset($_GET['force_recurring_ticket'])) {
 
             $footer = getEmailFooter();
             $email_subject = "Ticket created - [$ticket_prefix$ticket_number] - $ticket_subject (scheduled)";
-            $email_body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>A ticket regarding \"$ticket_subject\" has been automatically created for you.<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: Open<br>Portal: https://$config_base_url/client/ticket.php?id=$id<br>$footer<br>$config_ticket_from_email<br>$company_phone";
+            // SLA response commitment for this client + priority, empty when no SLA applies
+            $sla_notice = escapeSql(getTicketSlaEmailNotice($id, $company_phone));
+            $ticket_status_name = escapeSql(getTicketStatusName($ticket_status));
+            $email_body = "<i style=\'color: #808080\'>##- Please type your reply above this line -##</i><br><br>Hello $contact_name,<br><br>A ticket regarding \"$ticket_subject\" has been automatically created for you.<br><br>--------------------------------<br>$ticket_details--------------------------------<br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Status: $ticket_status_name<br>Portal: https://$config_base_url/client/ticket.php?id=$id$sla_notice<br>$footer<br>$config_ticket_from_email<br>$company_phone";
 
             $email = [
                 'from' => $config_ticket_from_email,

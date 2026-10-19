@@ -80,12 +80,12 @@ $result = $stmt->get_result();
 <div class="card">
     <div class="card-header bg-dark py-2">
         <h3 class="card-title mt-2">
-            <i class="fas fa-fw fa-database mr-2"></i>
+            <i class="fas fa-fw fa-database me-2"></i>
             Proxmox Backup Server Usage Report (<?php echo escapeHtml($from); ?> to <?php echo escapeHtml($to); ?>)
         </h3>
         <div class="card-tools">
             <button type="button" class="btn btn-primary d-print-none" onclick="window.print();">
-                <i class="fas fa-fw fa-print mr-2"></i>Print
+                <i class="fas fa-fw fa-print me-2"></i>Print
             </button>
         </div>
     </div>
@@ -106,7 +106,7 @@ $result = $stmt->get_result();
 
                 <div class="col-md-3 mb-2">
                     <label class="mb-1">Server</label>
-                    <select class="form-control" name="server">
+                    <select class="form-select" name="server">
                         <option <?php if($server == "All") echo "selected"; ?>>All</option>
                         <?php
                         while ($row = mysqli_fetch_assoc($available_servers)) { ?>
@@ -115,9 +115,9 @@ $result = $stmt->get_result();
                     </select>
                 </div>
 
-                <div class="col-md-2 mb-2 d-flex align-items-end ml-auto">
-                    <button type="submit" class="btn btn-success btn-block">
-                        <i class="fas fa-fw fa-filter mr-1"></i>Apply
+                <div class="col-md-2 mb-2 d-flex align-items-end ms-auto">
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fas fa-fw fa-filter me-1"></i>Apply
                     </button>
                 </div>
 
@@ -141,12 +141,12 @@ $result = $stmt->get_result();
                 <th>First Report</th>
                 <th>Last Report</th>
                 <th>Report Count</th>
-                <th class="text-right" style="width: 150px;">Minimum Usage</th>
-                <th class="text-right" style="width: 150px;">Maximum Usage</th>
-                <th class="text-right" style="width: 150px;">Average Usage</th>
+                <th class="text-end" style="width: 150px;">Minimum Usage</th>
+                <th class="text-end" style="width: 150px;">Maximum Usage</th>
+                <th class="text-end" style="width: 150px;">Average Usage</th>
                 <?php } else { ?>
                 <th>Report Date</th>
-                <th class="text-right" style="width: 150px;">Usage</th>
+                <th class="text-end" style="width: 150px;">Usage</th>
                 <?php } ?>
             </tr>
             </thead>
@@ -184,15 +184,15 @@ $result = $stmt->get_result();
                     <td><?php echo $r['last_report'] ?></td>
                     <?php
                     if($r['report_count'] == $report_days) echo "<td>".$r['report_count']."</td>";
-                    else if($r['report_count'] < $report_days) echo '<td class="font-weight-bold text-danger">'.$r['report_count']." (missing reports)</td>";
-                    else echo '<td class="font-weight-bold text-info">'.$r['report_count']." (extra reports)</td>";
+                    else if($r['report_count'] < $report_days) echo '<td class="fw-bold text-danger">'.$r['report_count']." (missing reports)</td>";
+                    else echo '<td class="fw-bold text-info">'.$r['report_count']." (extra reports)</td>";
                     ?>
-                    <td class="text-right"><?php echo $r['min_usage'] ?> GiB</td>
-                    <td class="text-right"><?php echo $r['max_usage'] ?> GiB</td>
-                    <td class="text-right font-weight-bold"><?php echo $r['average_usage'] ?> GiB</td>
+                    <td class="text-end"><?php echo $r['min_usage'] ?> GiB</td>
+                    <td class="text-end"><?php echo $r['max_usage'] ?> GiB</td>
+                    <td class="text-end fw-bold"><?php echo $r['average_usage'] ?> GiB</td>
                     <?php } else { ?>
                     <td><?php echo $r['report_date'] ?></td>
-                    <td class="text-right font-weight-bold"><?php echo $r['unique_size_gib'] ?> GiB</td>
+                    <td class="text-end fw-bold"><?php echo $r['unique_size_gib'] ?> GiB</td>
                     <?php } ?>
                 </tr>
                 <?php
